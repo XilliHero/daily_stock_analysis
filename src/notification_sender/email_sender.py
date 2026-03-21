@@ -58,7 +58,7 @@ class EmailSender:
         """
         self._email_config = {
             'sender': config.email_sender,
-            'sender_name': getattr(config, 'email_sender_name', 'daily_stock_analysis股票分析助手'),
+            'sender_name': getattr(config, 'email_sender_name', 'Daily Stock Analysis'),
             'password': config.email_password,
             'receivers': config.email_receivers or ([config.email_sender] if config.email_sender else []),
         }
@@ -154,7 +154,7 @@ class EmailSender:
             # 生成主题
             if subject is None:
                 date_str = datetime.now().strftime('%Y-%m-%d')
-                subject = f"📈 股票智能分析报告 - {date_str}"
+                subject = f"📈 Daily Stock Analysis Report - {date_str}"
             
             # 将 Markdown 转换为简单 HTML
             html_content = markdown_to_html_document(content)
@@ -226,7 +226,7 @@ class EmailSender:
         server: Optional[smtplib.SMTP] = None
         try:
             date_str = datetime.now().strftime('%Y-%m-%d')
-            subject = f"📈 股票智能分析报告 - {date_str}"
+            subject = f"📈 Daily Stock Analysis Report - {date_str}"
             msg = MIMEMultipart('related')
             msg['Subject'] = Header(subject, 'utf-8')
             msg['From'] = self._format_sender_address(sender)
