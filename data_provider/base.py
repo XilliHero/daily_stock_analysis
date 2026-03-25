@@ -817,7 +817,7 @@ class DataFetcherManager:
         Raises:
             DataFetchError: 所有数据源都失败时抛出
         """
-        from .us_index_mapping import is_us_index_code, is_us_stock_code
+        from .us_index_mapping import is_yfinance_supported
 
         # Normalize code (strip SH/SZ prefix etc.)
         stock_code = normalize_stock_code(stock_code)
@@ -826,8 +826,8 @@ class DataFetcherManager:
         total_fetchers = len(self._fetchers)
         request_start = time.time()
 
-        # 快速路径：美股指数与美股股票直接路由到 YfinanceFetcher
-        if is_us_index_code(stock_code) or is_us_stock_code(stock_code):
+        # 快速路径：美股/加拿大股/加密货币直接路由到 YfinanceFetcher（跳过国内数据源）
+        if is_yfinance_supported(stock_code):
             for attempt, fetcher in enumerate(self._fetchers, start=1):
                 if fetcher.name == "YfinanceFetcher":
                     try:
@@ -858,7 +858,7 @@ class DataFetcherManager:
                         errors.append(error_msg)
                     break
             # YfinanceFetcher failed or not found
-            error_summary = f"美股/美股指数 {stock_code} 获取失败:\n" + "\n".join(errors)
+            error_summary = f"美股/加拿大股/加密货币 {stock_code} 获取失败:\n" + "\n".join(errors)
             elapsed = time.time() - request_start
             logger.error(f"[数据源终止] {stock_code} 获取失败: elapsed={elapsed:.2f}s\n{error_summary}")
             raise DataFetchError(error_summary)
@@ -1008,8 +1008,7 @@ class DataFetcherManager:
         # Normalize code (strip SH/SZ prefix etc.)
         stock_code = normalize_stock_code(stock_code)
 
-        from .akshare_fetcher import _is_us_code
-        from .us_index_mapping import is_us_index_code
+        from .us_index_mapping import is_yfinance_supported
         from src.config import get_config
 
         config = get_config()
@@ -1019,36 +1018,20 @@ class DataFetcherManager:
             logger.debug(f"[实时行情] 功能已禁用，跳过 {stock_code}")
             return None
 
-        # 美股指数由 YfinanceFetcher 处理（在美股股票检查之前）
-        if is_us_index_code(stock_code):
+        # 美股/加拿大股/加密货币/美股指数统一路由到 YfinanceFetcher
+        if is_yfinance_supported(stock_code):
             for fetcher in self._fetchers:
                 if fetcher.name == "YfinanceFetcher":
                     if hasattr(fetcher, 'get_realtime_quote'):
                         try:
                             quote = fetcher.get_realtime_quote(stock_code)
                             if quote is not None:
-                                logger.info(f"[实时行情] 美股指数 {stock_code} 成功获取 (来源: yfinance)")
+                                logger.info(f"[实时行情] {stock_code} 成功获取 (来源: yfinance)")
                                 return quote
                         except Exception as e:
-                            logger.warning(f"[实时行情] 美股指数 {stock_code} 获取失败: {e}")
+                            logger.warning(f"[实时行情] {stock_code} 获取失败: {e}")
                     break
-            logger.warning(f"[实时行情] 美股指数 {stock_code} 无可用数据源")
-            return None
-
-        # 美股单独处理，使用 YfinanceFetcher
-        if _is_us_code(stock_code):
-            for fetcher in self._fetchers:
-                if fetcher.name == "YfinanceFetcher":
-                    if hasattr(fetcher, 'get_realtime_quote'):
-                        try:
-                            quote = fetcher.get_realtime_quote(stock_code)
-                            if quote is not None:
-                                logger.info(f"[实时行情] 美股 {stock_code} 成功获取 (来源: yfinance)")
-                                return quote
-                        except Exception as e:
-                            logger.warning(f"[实时行情] 美股 {stock_code} 获取失败: {e}")
-                    break
-            logger.warning(f"[实时行情] 美股 {stock_code} 无可用数据源")
+            logger.warning(f"[实时行情] {stock_code} 无可用数据源 (yfinance)")
             return None
 
         # 港股实时行情只走港股专用入口，避免按 A 股 source_priority

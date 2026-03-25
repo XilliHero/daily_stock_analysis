@@ -33,7 +33,7 @@ from tenacity import (
 
 from .base import BaseFetcher, DataFetchError, STANDARD_COLUMNS, is_bse_code
 from .realtime_types import UnifiedRealtimeQuote, RealtimeSource
-from .us_index_mapping import get_us_index_yf_symbol, is_us_stock_code
+from .us_index_mapping import get_us_index_yf_symbol, is_us_stock_code, is_ca_stock_code, is_crypto_code
 
 # 可选导入本地股票映射补丁，若缺失则使用空字典兜底
 try:
@@ -109,6 +109,16 @@ class YfinanceFetcher(BaseFetcher):
         if yf_symbol:
             logger.debug(f"识别为美股指数: {code} -> {yf_symbol}")
             return yf_symbol
+
+        # 加拿大股票（TSX）：MDA.TO, SU.TO 等，yfinance 直接使用 .TO 后缀格式
+        if is_ca_stock_code(code):
+            logger.debug(f"识别为加拿大 TSX 代码: {code}")
+            return code
+
+        # 加密货币：BTC-USD, ETH-USD 等，yfinance 直接支持此格式
+        if is_crypto_code(code):
+            logger.debug(f"识别为加密货币代码: {code}")
+            return code
 
         # 美股：1-5 个大写字母（可选 .X 后缀），原样返回
         if is_us_stock_code(code):
@@ -373,11 +383,12 @@ class YfinanceFetcher(BaseFetcher):
 
     def _is_us_stock(self, stock_code: str) -> bool:
         """
-        判断代码是否为美股股票（排除美股指数）。
+        判断代码是否可由 yfinance 处理的股票/资产（美股、加拿大股、加密货币）。
 
-        委托给 us_index_mapping 模块的 is_us_stock_code()。
+        排除美股指数（由 get_realtime_quote 中的 get_us_index_yf_symbol 单独处理）。
         """
-        return is_us_stock_code(stock_code)
+        code = (stock_code or '').strip().upper()
+        return is_us_stock_code(code) or is_ca_stock_code(code) or is_crypto_code(code)
 
     def _get_us_stock_quote_from_stooq(self, stock_code: str) -> Optional[UnifiedRealtimeQuote]:
         """
