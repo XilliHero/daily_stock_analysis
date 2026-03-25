@@ -53,7 +53,7 @@ def run_market_review(
         if override_region is not None
         else (getattr(config, 'market_review_region', 'cn') or 'cn')
     )
-    if region not in ('cn', 'us', 'both'):
+    if region not in ('cn', 'us', 'ca', 'both', 'us_ca'):
         region = 'cn'
 
     try:
@@ -71,11 +71,32 @@ def run_market_review(
             us_report = us_analyzer.run_daily_review()
             review_report = ''
             if cn_report:
-                review_report = f"# A股大盘复盘\n\n{cn_report}"
+                review_report = f"# A-Share Market Review\n\n{cn_report}"
             if us_report:
                 if review_report:
-                    review_report += "\n\n---\n\n> 以下为美股大盘复盘\n\n"
-                review_report += f"# 美股大盘复盘\n\n{us_report}"
+                    review_report += "\n\n---\n\n"
+                review_report += f"# US Market Review\n\n{us_report}"
+            if not review_report:
+                review_report = None
+        elif region == 'us_ca':
+            # US + Canada combined review
+            us_analyzer = MarketAnalyzer(
+                search_service=search_service, analyzer=analyzer, region='us'
+            )
+            ca_analyzer = MarketAnalyzer(
+                search_service=search_service, analyzer=analyzer, region='ca'
+            )
+            logger.info("Generating US market review...")
+            us_report = us_analyzer.run_daily_review()
+            logger.info("Generating Canadian market review...")
+            ca_report = ca_analyzer.run_daily_review()
+            review_report = ''
+            if us_report:
+                review_report = f"# US Market Review\n\n{us_report}"
+            if ca_report:
+                if review_report:
+                    review_report += "\n\n---\n\n"
+                review_report += f"# Canadian Market Review (TSX)\n\n{ca_report}"
             if not review_report:
                 review_report = None
         else:

@@ -130,6 +130,56 @@ US_BLUEPRINT = MarketStrategyBlueprint(
 )
 
 
+CA_BLUEPRINT = MarketStrategyBlueprint(
+    region="ca",
+    title="Canadian Market (TSX) Strategy",
+    positioning="Focus on TSX Composite trend, commodity/energy sensitivity, and cross-border US influence to define next-session posture.",
+    principles=[
+        "Read the TSX Composite direction first; it is heavily influenced by energy, financials, and materials.",
+        "Monitor USD/CAD and commodity prices (oil, gold, copper) as key macro drivers for Canadian equities.",
+        "Account for strong correlation with US markets — S&P 500 direction often sets the tone for the TSX.",
+    ],
+    dimensions=[
+        StrategyDimension(
+            name="Index Trend",
+            objective="Classify TSX as trending, range-bound, or risk-off.",
+            checkpoints=[
+                "Is TSX Composite above or below key moving averages",
+                "Did volume confirm the day's move",
+                "Are key support/resistance levels holding",
+            ],
+        ),
+        StrategyDimension(
+            name="Commodity & Macro",
+            objective="Map commodity prices and CAD strength into equity sector bias.",
+            checkpoints=[
+                "Oil (WTI/Brent) direction — critical for energy sector (XEG)",
+                "Gold price trend — key for materials and miners",
+                "USD/CAD rate — affects export-heavy companies",
+            ],
+        ),
+        StrategyDimension(
+            name="Sector Leadership",
+            objective="Identify leading and lagging sectors on the TSX.",
+            checkpoints=[
+                "Energy and financials — dominant TSX weight, watch for rotation",
+                "Tech and healthcare — growth exposure, often US-correlated",
+                "Materials — gold miners, potash, base metals sensitivity",
+            ],
+        ),
+    ],
+    action_framework=[
+        "Risk-on: TSX breaking out with energy/financials leadership and rising commodities.",
+        "Neutral: Mixed signals between sectors; focus on relative strength in individual names.",
+        "Risk-off: TSX weakening with falling oil/gold and broad sector decline; preserve capital.",
+    ],
+)
+
+
 def get_market_strategy_blueprint(region: str) -> MarketStrategyBlueprint:
     """Return strategy blueprint by market region."""
-    return US_BLUEPRINT if region == "us" else CN_BLUEPRINT
+    if region == "us":
+        return US_BLUEPRINT
+    if region == "ca":
+        return CA_BLUEPRINT
+    return CN_BLUEPRINT

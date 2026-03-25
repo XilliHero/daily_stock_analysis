@@ -1698,10 +1698,10 @@ class Config:
         """解析大盘复盘市场区域，非法值记录警告后回退为 cn"""
         import logging
         v = (value or 'cn').strip().lower()
-        if v in ('cn', 'us', 'both'):
+        if v in ('cn', 'us', 'ca', 'both', 'us_ca'):
             return v
         logging.getLogger(__name__).warning(
-            f"MARKET_REVIEW_REGION 配置值 '{value}' 无效，已回退为默认值 'cn'（合法值：cn / us / both）"
+            f"MARKET_REVIEW_REGION value '{value}' is invalid, falling back to 'cn' (valid: cn / us / ca / both / us_ca)"
         )
         return 'cn'
 

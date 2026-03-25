@@ -30,13 +30,14 @@ except ImportError:
     )
 
 # Market -> exchange code (exchange-calendars)
-MARKET_EXCHANGE = {"cn": "XSHG", "hk": "XHKG", "us": "XNYS"}
+MARKET_EXCHANGE = {"cn": "XSHG", "hk": "XHKG", "us": "XNYS", "ca": "XTSE"}
 
 # Market -> IANA timezone for "today"
 MARKET_TIMEZONE = {
     "cn": "Asia/Shanghai",
     "hk": "Asia/Hong_Kong",
     "us": "America/New_York",
+    "ca": "America/Toronto",
 }
 
 
@@ -53,6 +54,9 @@ def get_market_for_stock(code: str) -> Optional[str]:
 
     from data_provider import is_us_stock_code, is_us_index_code, is_hk_stock_code
 
+    # Canadian stocks: suffix .TO or .TSX (e.g. MDA.TO)
+    if code.endswith(".TO") or code.endswith(".TSX") or code.endswith(".V"):
+        return "ca"
     if is_us_stock_code(code) or is_us_index_code(code):
         return "us"
     if is_hk_stock_code(code):
@@ -128,13 +132,24 @@ def compute_effective_region(
         '': all relevant markets closed, skip market review
         'cn' | 'us' | 'both': effective subset for today
     """
-    if config_region not in ("cn", "us", "both"):
+    if config_region not in ("cn", "us", "ca", "both", "us_ca"):
         config_region = "cn"
     if config_region == "cn":
         return "cn" if "cn" in open_markets else ""
     if config_region == "us":
         return "us" if "us" in open_markets else ""
-    # both
+    if config_region == "ca":
+        return "ca" if "ca" in open_markets else ""
+    if config_region == "us_ca":
+        parts = []
+        if "us" in open_markets:
+            parts.append("us")
+        if "ca" in open_markets:
+            parts.append("ca")
+        if not parts:
+            return ""
+        return "us_ca" if len(parts) == 2 else parts[0]
+    # both (us + cn)
     parts = []
     if "cn" in open_markets:
         parts.append("cn")

@@ -54,8 +54,24 @@ US_PROFILE = MarketProfile(
 )
 
 
+CA_PROFILE = MarketProfile(
+    region="ca",
+    mood_index_code="^GSPTSE",
+    news_queries=[
+        "TSX Toronto Stock Exchange market",
+        "Canada stock market today",
+        "Canadian equities TSX composite",
+    ],
+    prompt_index_hint="Analyze the TSX Composite and key Canadian indices for trend and sector leadership",
+    has_market_stats=False,
+    has_sector_rankings=False,
+)
+
+
 def get_profile(region: str) -> MarketProfile:
     """根据 region 返回对应的 MarketProfile"""
     if region == "us":
         return US_PROFILE
+    if region == "ca":
+        return CA_PROFILE
     return CN_PROFILE
