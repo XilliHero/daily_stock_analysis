@@ -10,6 +10,8 @@ Sections
   2. Watchlist          — pre-market price vs. prior close for every ticker
   3. Key Headlines      — up to 2 recent stories per ticker (last 24 h)
   4. What to Watch      — auto-generated bullets derived from the data
+  5. Portfolio Risk     — 90-day beta, Jensen's alpha, correlation matrix,
+                          equal-weighted portfolio volatility and risk flags
 
 No AI / LLM required.
 Requires: EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECEIVERS, STOCK_LIST
@@ -26,6 +28,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from typing import Optional
+
+from src.portfolio_risk import RiskData, compute_risk
 
 log = logging.getLogger("briefing")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
@@ -304,12 +308,205 @@ def build_watch_bullets(futures_data: list, watchlist_data: list) -> list:
 # HTML EMAIL BUILDER
 # ──────────────────────────────────────────────────
 
+def build_risk_section(risk: RiskData) -> str:
+    """
+    Render the Portfolio Risk section as an inline-CSS HTML block.
+
+    Designed to slot into the existing morning_briefing email layout
+    (white card body, border styling matching other sections).
+    """
+    if risk.error:
+        return f"""
+  <!-- ── Portfolio Risk (error) ── -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;padding:16px 28px 18px;">
+    <h2 style="margin:0 0 8px;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;">
+      📐 &nbsp;Portfolio Risk — 90-Day Window
+    </h2>
+    <p style="color:#94a3b8;font-size:13px;margin:0;">
+      Risk data unavailable: {risk.error}
+    </p>
+  </div>"""
+
+    p = risk.portfolio
+    tr = risk.ticker_risks
+
+    # ── colour helpers ────────────────────────────────────────────────────
+    def pct_colour(v: float) -> str:
+        return "#16a34a" if v >= 0 else "#dc2626"
+
+    def beta_colour(b: float) -> str:
+        if b > 1.5:   return "#dc2626"
+        if b > 1.0:   return "#d97706"
+        if b < 0:     return "#7c3aed"
+        return "#16a34a"
+
+    def alpha_colour(a: float) -> str:
+        return "#16a34a" if a >= 0 else "#dc2626"
+
+    def corr_bg(c: float) -> str:
+        """Heat-map cell background: red → white → green."""
+        a = abs(c)
+        if c >= 0:
+            r = int(255 - a * 80)
+            g = int(255 - a * 20)
+            b = int(255 - a * 80)
+        else:
+            r = int(255 - a * 20)
+            g = int(255 - a * 80)
+            b = int(255 - a * 80)
+        return f"rgb({r},{g},{b})"
+
+    # ── per-ticker rows ───────────────────────────────────────────────────
+    ticker_rows = ""
+    for t in risk.watchlist:
+        if t not in tr:
+            continue
+        d = tr[t]
+        ticker_rows += f"""
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:7px 14px;font-weight:700;color:#0f172a;font-family:monospace;font-size:13px;">{t}</td>
+          <td style="padding:7px 14px;text-align:right;font-weight:600;color:{beta_colour(d.beta)};">{d.beta:+.2f}</td>
+          <td style="padding:7px 14px;text-align:right;font-weight:600;color:{alpha_colour(d.alpha_annual)};">{d.alpha_annual:+.1%}</td>
+          <td style="padding:7px 14px;text-align:right;color:{pct_colour(d.return_90d)};">{d.return_90d:+.1%}</td>
+          <td style="padding:7px 14px;text-align:right;color:#475569;">{d.volatility:.1%}</td>
+          <td style="padding:7px 14px;text-align:right;color:#94a3b8;font-size:11px;">{d.n_days}d</td>
+        </tr>"""
+
+    # ── correlation matrix ────────────────────────────────────────────────
+    tickers     = risk.watchlist
+    corr_header = "".join(
+        f'<th style="padding:5px 10px;text-align:center;font-size:11px;color:#64748b;'
+        f'font-weight:700;font-family:monospace;">{t}</th>'
+        for t in tickers
+    )
+    corr_rows = ""
+    for row_t in tickers:
+        cells = ""
+        for col_t in tickers:
+            if row_t == col_t:
+                cells += '<td style="padding:5px 10px;text-align:center;background:#f1f5f9;font-size:12px;color:#94a3b8;">—</td>'
+            elif row_t in risk.correlation_matrix.index and col_t in risk.correlation_matrix.columns:
+                c   = risk.correlation_matrix.loc[row_t, col_t]
+                bg  = corr_bg(c)
+                txt = "#0f172a" if abs(c) < 0.85 else "#ffffff"
+                cells += (
+                    f'<td style="padding:5px 10px;text-align:center;background:{bg};'
+                    f'font-size:12px;color:{txt};font-weight:{"600" if abs(c)>=0.75 else "400"};">'
+                    f'{c:+.2f}</td>'
+                )
+            else:
+                cells += '<td style="padding:5px 10px;text-align:center;color:#94a3b8;">—</td>'
+        corr_rows += (
+            f'<tr><th style="padding:5px 10px;text-align:left;font-size:11px;color:#64748b;'
+            f'font-weight:700;font-family:monospace;white-space:nowrap;">{row_t}</th>'
+            f'{cells}</tr>'
+        )
+
+    # ── portfolio summary bar ─────────────────────────────────────────────
+    vol_colour  = "#dc2626" if p.portfolio_volatility >= 0.40 else "#d97706" if p.portfolio_volatility >= 0.25 else "#16a34a"
+    beta_c      = beta_colour(p.portfolio_beta)
+    ret_c       = pct_colour(p.portfolio_return_90d)
+
+    # ── flags ─────────────────────────────────────────────────────────────
+    flags_html = ""
+    if p.flags:
+        items = "".join(
+            f'<li style="margin:4px 0;font-size:13px;color:#92400e;">{f}</li>'
+            for f in p.flags
+        )
+        flags_html = f"""
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 16px;margin-top:14px;">
+        <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.06em;">
+          ⚠️  Risk Flags
+        </p>
+        <ul style="margin:0;padding-left:16px;">{items}</ul>
+      </div>"""
+    else:
+        flags_html = """
+      <p style="margin:10px 0 0;font-size:13px;color:#16a34a;">
+        ✅ &nbsp;No risk flags — portfolio correlations and volatility within normal range.
+      </p>"""
+
+    return f"""
+  <!-- ── Portfolio Risk ── -->
+  <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:0;">
+    <div style="padding:16px 28px 8px;">
+      <h2 style="margin:0;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;">
+        📐 &nbsp;Portfolio Risk — 90-Day Window
+      </h2>
+    </div>
+
+    <!-- Beta / Alpha / Return table -->
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#f8fafc;">
+          <th style="padding:6px 14px;text-align:left;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;">Ticker</th>
+          <th style="padding:6px 14px;text-align:right;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;" title="Volatility vs. S&P 500">Beta</th>
+          <th style="padding:6px 14px;text-align:right;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;" title="Jensen's Alpha (annualised)">Alpha</th>
+          <th style="padding:6px 14px;text-align:right;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;">90d Return</th>
+          <th style="padding:6px 14px;text-align:right;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;">Ann. Vol</th>
+          <th style="padding:6px 14px;text-align:right;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;">Days</th>
+        </tr>
+      </thead>
+      <tbody>{ticker_rows}
+      </tbody>
+    </table>
+    <p style="margin:0;padding:4px 14px 14px;font-size:11px;color:#94a3b8;text-align:right;">
+      Beta &amp; Alpha vs. ^GSPC &nbsp;·&nbsp; Equal-weighted &nbsp;·&nbsp; 90-calendar-day window
+    </p>
+
+    <!-- Correlation matrix -->
+    <div style="padding:0 28px 14px;">
+      <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">
+        Correlation Matrix (daily returns)
+      </p>
+      <div style="overflow-x:auto;">
+        <table style="border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr>
+              <th style="padding:5px 10px;"></th>
+              {corr_header}
+            </tr>
+          </thead>
+          <tbody>{corr_rows}</tbody>
+        </table>
+      </div>
+      <p style="margin:6px 0 0;font-size:11px;color:#94a3b8;">
+        Pearson correlation · highlighted cells ≥ 0.75 indicate high co-movement
+      </p>
+    </div>
+
+    <!-- Portfolio summary -->
+    <div style="padding:0 28px 16px;">
+      <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">
+        Equal-Weighted Portfolio Summary
+      </p>
+      <table style="border-collapse:collapse;width:100%;max-width:400px;">
+        <tr>
+          <td style="padding:5px 12px 5px 0;font-size:13px;color:#475569;">Annualised Volatility</td>
+          <td style="padding:5px 0;font-size:13px;font-weight:700;color:{vol_colour};">{p.portfolio_volatility:.1%}</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 12px 5px 0;font-size:13px;color:#475569;">Portfolio Beta</td>
+          <td style="padding:5px 0;font-size:13px;font-weight:700;color:{beta_c};">{p.portfolio_beta:+.2f}</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 12px 5px 0;font-size:13px;color:#475569;">90-Day Return</td>
+          <td style="padding:5px 0;font-size:13px;font-weight:700;color:{ret_c};">{p.portfolio_return_90d:+.1%}</td>
+        </tr>
+      </table>
+      {flags_html}
+    </div>
+  </div>"""
+
+
 def build_html(
     now_et: datetime,
     futures_data: list,
     watchlist_data: list,
     news_data: dict,
     watch_bullets: list,
+    risk_section: str = "",
 ) -> str:
     date_str   = now_et.strftime("%A, %B %-d, %Y")
     time_str   = now_et.strftime("%-I:%M %p ET")
@@ -463,7 +660,7 @@ def build_html(
   </div>
 
   <!-- ── What to Watch ── -->
-  <div style="background:#fffbeb;border:1px solid #fde68a;border-top:none;border-radius:0 0 12px 12px;padding:16px 28px 20px;">
+  <div style="background:#fffbeb;border:1px solid #fde68a;border-top:none;padding:16px 28px 20px;">
     <h2 style="margin:0 0 10px;font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.08em;">
       🎯 &nbsp;What to Watch Today
     </h2>
@@ -471,6 +668,8 @@ def build_html(
 {bullets_html}
     </ul>
   </div>
+
+{risk_section}
 
   <!-- ── Footer ── -->
   <p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:18px;line-height:1.6;">
@@ -584,8 +783,13 @@ def main() -> None:
     # ── Build "What to Watch" ─────────────────────
     watch_bullets = build_watch_bullets(futures_data, watchlist_data)
 
+    # ── Portfolio risk (90-day) ───────────────────
+    log.info("Computing portfolio risk metrics (90-day window)...")
+    risk_data    = compute_risk(watchlist, benchmark="^GSPC", lookback=90)
+    risk_section = build_risk_section(risk_data)
+
     # ── Build HTML ────────────────────────────────
-    html_body = build_html(now_et, futures_data, watchlist_data, news_data, watch_bullets)
+    html_body = build_html(now_et, futures_data, watchlist_data, news_data, watch_bullets, risk_section)
 
     # ── Send email ────────────────────────────────
     date_label = now_et.strftime("%b %-d")
