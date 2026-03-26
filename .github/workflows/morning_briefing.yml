@@ -1,0 +1,89 @@
+name: Morning Pre-Market Briefing
+
+on:
+  # Run Mon–Fri at 13:00 UTC (8:00 AM Eastern, before market open)
+  schedule:
+    - cron: "0 13 * * 1-5"
+
+  # Allow manual trigger from the GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Skip sending the email (dry run)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      save_html:
+        description: "Upload rendered HTML as a workflow artifact"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  brief:
+    name: Fetch · Build · Email
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ──────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # ── 3. Install dependencies ──────────────────────────────────────────
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── 4. Run the briefing (scheduled) ──────────────────────────────────
+      - name: Run morning briefing (scheduled)
+        if: github.event_name == 'schedule'
+        run: python morning_briefing.py
+        env:
+          SMTP_HOST:     ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:     ${{ secrets.SMTP_PORT }}
+          SMTP_USER:     ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          FROM_EMAIL:    ${{ secrets.FROM_EMAIL }}
+          TO_EMAIL:      ${{ secrets.TO_EMAIL }}
+
+      # ── 5. Manual run with configurable flags ────────────────────────────
+      - name: Run morning briefing (manual)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ "${{ github.event.inputs.save_html }}" = "true" ]; then
+            ARGS="$ARGS --save-html"
+          fi
+          python morning_briefing.py $ARGS
+        env:
+          SMTP_HOST:     ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:     ${{ secrets.SMTP_PORT }}
+          SMTP_USER:     ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          FROM_EMAIL:    ${{ secrets.FROM_EMAIL }}
+          TO_EMAIL:      ${{ secrets.TO_EMAIL }}
+
+      # ── 6. Upload HTML artifact (when --save-html is set) ────────────────
+      - name: Upload HTML briefing artifact
+        if: github.event.inputs.save_html == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: morning-briefing-${{ github.run_id }}
+          path: briefing_output.html
+          retention-days: 7

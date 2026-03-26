@@ -16,6 +16,7 @@ env/
 
 # Report output (local previews)
 report_output.html
+briefing_output.html
 
 # macOS
 .DS_Store
