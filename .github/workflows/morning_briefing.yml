@@ -1,0 +1,80 @@
+name: Morning Pre-Market Briefing
+
+on:
+  # Runs at 13:00 UTC = 8:00 AM EST / 9:00 AM EDT, Monday–Friday
+  # Note: GitHub Actions cron is always UTC. During US daylight saving time
+  # (Mar–Nov) this fires at 9:00 AM ET; during standard time (Nov–Mar) at 8:00 AM ET.
+  # Adjust to '0 12 * * 1-5' if you prefer a consistent 8 AM EDT during summer.
+  schedule:
+    - cron: '0 13 * * 1-5'
+
+  # Manual trigger — useful for testing or re-sending a missed briefing
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force send even on non-trading days'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+# Only one briefing at a time
+concurrency:
+  group: morning-briefing
+  cancel-in-progress: false
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10        # lightweight — should finish in 2–3 min
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip --quiet
+          pip install yfinance --quiet
+
+      - name: Send Morning Briefing
+        env:
+          # ── Email (required) ──────────────────────────────────
+          EMAIL_SENDER:    ${{ vars.EMAIL_SENDER    || secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD:  ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVERS: ${{ vars.EMAIL_RECEIVERS || secrets.EMAIL_RECEIVERS || secrets.EMAIL_RECEIVES }}
+
+          # ── Watchlist (shared with daily analysis) ───────────
+          STOCK_LIST: ${{ vars.STOCK_LIST || secrets.STOCK_LIST || 'TSLA,OKLO,XLE,CORN,MDA.TO,BTC-USD,SPOT' }}
+
+          # ── Control ───────────────────────────────────────────
+          FORCE_RUN: ${{ github.event.inputs.force_run || 'false' }}
+
+        run: |
+          echo "================================================"
+          echo "📊 Morning Pre-Market Briefing"
+          echo "================================================"
+          echo "Time (UTC) : $(date -u '+%Y-%m-%d %H:%M UTC')"
+          echo "Watchlist  : $STOCK_LIST"
+          echo "Sender     : ${EMAIL_SENDER:+configured}${EMAIL_SENDER:-NOT SET}"
+          echo "Receivers  : ${EMAIL_RECEIVERS:-same as sender}"
+          echo "Force run  : $FORCE_RUN"
+          echo ""
+          python src/morning_briefing.py
+
+      - name: Show result
+        if: always()
+        run: |
+          echo ""
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Briefing sent successfully."
+          else
+            echo "❌ Briefing failed — check the logs above."
+          fi
