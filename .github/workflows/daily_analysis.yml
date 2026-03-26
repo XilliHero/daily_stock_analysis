@@ -1,0 +1,89 @@
+name: Daily Stock Analysis
+
+on:
+  # Run Mon–Fri at 21:30 UTC (5:30 PM Eastern, after market close)
+  schedule:
+    - cron: "30 21 * * 1-5"
+
+  # Allow manual trigger from the GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Skip sending the email (dry run)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      save_html:
+        description: "Upload rendered HTML as a workflow artifact"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  analyze:
+    name: Fetch · Analyze · Email
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ──────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # ── 3. Install dependencies ──────────────────────────────────────────
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── 4. Run the report (scheduled or workflow_dispatch without flags) ──
+      - name: Run daily analysis (scheduled)
+        if: github.event_name == 'schedule'
+        run: python main.py
+        env:
+          SMTP_HOST:     ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:     ${{ secrets.SMTP_PORT }}
+          SMTP_USER:     ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          FROM_EMAIL:    ${{ secrets.FROM_EMAIL }}
+          TO_EMAIL:      ${{ secrets.TO_EMAIL }}
+
+      # ── 5. Manual run with configurable flags ────────────────────────────
+      - name: Run daily analysis (manual)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ "${{ github.event.inputs.save_html }}" = "true" ]; then
+            ARGS="$ARGS --save-html"
+          fi
+          python main.py $ARGS
+        env:
+          SMTP_HOST:     ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:     ${{ secrets.SMTP_PORT }}
+          SMTP_USER:     ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          FROM_EMAIL:    ${{ secrets.FROM_EMAIL }}
+          TO_EMAIL:      ${{ secrets.TO_EMAIL }}
+
+      # ── 6. Upload HTML artifact (when --save-html is set) ────────────────
+      - name: Upload HTML report artifact
+        if: github.event.inputs.save_html == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-report-${{ github.run_id }}
+          path: report_output.html
+          retention-days: 7

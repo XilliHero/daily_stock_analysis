@@ -1,0 +1,27 @@
+# Environment & secrets
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Report output (local previews)
+report_output.html
+
+# macOS
+.DS_Store
+
+# Node (legacy from project root)
+node_modules/
+
+# Jupyter
+.ipynb_checkpoints/
