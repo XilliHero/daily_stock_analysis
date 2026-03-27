@@ -61,7 +61,7 @@ def main(dry_run: bool = False, save_html: bool = False) -> None:
     for ticker, q in quotes.items():
         price = q.get("price")
         chg = q.get("change_pct")
-        logger.info("  %-10s  $%,.2f  (%+.2f%%)", ticker, price or 0, chg or 0)
+        logger.info("  %-10s  $%s  (%+.2f%%)", ticker, f"{price or 0:,.2f}", chg or 0)
 
     # 2. Risk analysis --------------------------------------------------------
     logger.info("Running portfolio risk analysis …")
