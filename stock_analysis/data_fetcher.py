@@ -1,11 +1,11 @@
 """
-Fetches price history and current quotes via yfinance.
+Fetches price history, current quotes, and recent news via yfinance.
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import yfinance as yf
@@ -117,3 +117,79 @@ def fetch_current_quotes(watchlist: list[str] = WATCHLIST) -> dict[str, dict]:
                 "fifty_two_week_low": None,
             }
     return quotes
+
+
+def fetch_news(
+    watchlist: list[str] = WATCHLIST,
+    max_per_ticker: int = 3,
+    hours: int = 48,
+) -> dict[str, list[dict]]:
+    """
+    Fetch recent news headlines for each ticker via yfinance.
+
+    Returns
+    -------
+    dict mapping ticker → list of {title, url, publisher, published_at}
+    Items are limited to the last `hours` hours, up to `max_per_ticker` each.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    result: dict[str, list[dict]] = {}
+
+    for ticker in watchlist:
+        try:
+            t = yf.Ticker(ticker)
+            raw_news = t.news or []
+            items: list[dict] = []
+
+            for item in raw_news[:15]:           # inspect first 15 to find fresh ones
+                # yfinance v0.2+ nests content differently; handle both layouts
+                content = item.get("content") or {}
+                ts = (
+                    content.get("pubDate")
+                    or item.get("providerPublishTime")
+                )
+                if isinstance(ts, int):
+                    pub = datetime.fromtimestamp(ts, tz=timezone.utc)
+                elif isinstance(ts, str):
+                    try:
+                        pub = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    except Exception:
+                        pub = datetime.now(timezone.utc)
+                else:
+                    pub = datetime.now(timezone.utc)
+
+                if pub < cutoff:
+                    continue                      # too old
+
+                title = (
+                    content.get("title")
+                    or item.get("title", "")
+                )
+                url = (
+                    (content.get("canonicalUrl") or {}).get("url")
+                    or item.get("link", "")
+                )
+                publisher = (
+                    (content.get("provider") or {}).get("displayName")
+                    or item.get("publisher", "")
+                )
+
+                items.append(
+                    {
+                        "title": title,
+                        "url": url,
+                        "publisher": publisher,
+                        "published_at": pub,
+                    }
+                )
+                if len(items) >= max_per_ticker:
+                    break
+
+            result[ticker] = items
+            logger.debug("Fetched %d news items for %s", len(items), ticker)
+
+        except Exception as exc:
+            logger.warning("Could not fetch news for %s: %s", ticker, exc)
+            result[ticker] = []
+
+    return result

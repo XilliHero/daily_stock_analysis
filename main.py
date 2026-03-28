@@ -26,10 +26,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from stock_analysis.config import BENCHMARK, LOOKBACK_DAYS, WATCHLIST
-from stock_analysis.data_fetcher import fetch_current_quotes, fetch_price_history
+from stock_analysis.data_fetcher import fetch_current_quotes, fetch_news, fetch_price_history
 from stock_analysis.email_sender import send_report
 from stock_analysis.portfolio_risk import run_risk_analysis
 from stock_analysis.report_builder import build_html_report
+from stock_analysis.technicals import compute_technicals
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -63,7 +64,24 @@ def main(dry_run: bool = False, save_html: bool = False) -> None:
         chg = q.get("change_pct")
         logger.info("  %-10s  $%s  (%+.2f%%)", ticker, f"{price or 0:,.2f}", chg or 0)
 
-    # 2. Risk analysis --------------------------------------------------------
+    # 2. Technical analysis ---------------------------------------------------
+    logger.info("Computing technical indicators (MA5/MA10/MA20, RSI, bias) …")
+    techs = compute_technicals(stock_prices, quotes)
+    for ticker, t in sorted(techs.items(), key=lambda x: x[1].score, reverse=True):
+        logger.info(
+            "  %-10s  %-12s  score=%-3d  RSI=%-5s  bias=%s",
+            ticker, t.signal, t.score,
+            f"{t.rsi:.1f}" if t.rsi is not None else "N/A",
+            f"{t.bias_pct:+.2f}%" if t.bias_pct is not None else "N/A",
+        )
+
+    # 3. News -----------------------------------------------------------------
+    logger.info("Fetching latest news (48 h window) …")
+    news_map = fetch_news(WATCHLIST)
+    total_news = sum(len(v) for v in news_map.values())
+    logger.info("  %d news items fetched across %d tickers.", total_news, len(news_map))
+
+    # 4. Risk analysis --------------------------------------------------------
     logger.info("Running portfolio risk analysis …")
     risk_report = run_risk_analysis(stock_prices, market_prices)
 
@@ -74,9 +92,9 @@ def main(dry_run: bool = False, save_html: bool = False) -> None:
         for flag in risk_report.portfolio.flags:
             logger.warning("  FLAG: %s", flag)
 
-    # 3. Build HTML report ----------------------------------------------------
+    # 5. Build HTML report ----------------------------------------------------
     logger.info("Building HTML report …")
-    html = build_html_report(quotes, risk_report, report_date=now)
+    html = build_html_report(quotes, risk_report, techs=techs, news_map=news_map, report_date=now)
 
     if save_html:
         output_path = "report_output.html"
