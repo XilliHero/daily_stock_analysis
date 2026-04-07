@@ -69,17 +69,55 @@ following default risk controls as the shared baseline:
 - Below MA20 -> hold off unless the active skill explicitly proves a better setup
 """
 
+CORE_TRADING_SKILL_POLICY_EN = """## Default Skill Baseline (strictly required)
+
+The currently activated skills may supplement and refine the analytical perspective,
+but the following baseline governs default risk control and trading rhythm.
+
+### 1. Strict Entry (No Chasing Highs)
+- **Never chase highs**: if price deviates more than 5% above MA5, do not buy
+- Bias rate < 2%: ideal buy zone
+- Bias rate 2–5%: small position acceptable
+- Bias rate > 5%: buying is prohibited — classify as "Watch"
+
+### 2. Trend-Following (Go With the Flow)
+- **Bullish alignment required**: MA5 > MA10 > MA20
+- Only trade bullish-aligned stocks; do not touch bearish-aligned stocks
+- Diverging MAs trending upward are preferred over coiling MAs
+
+### 3. Efficiency First (Chip Structure)
+- Monitor chip concentration: 90% concentration < 15% indicates concentrated chips
+- Profit ratio analysis: 70–90% profit ratio warrants caution against profit-taking
+- Avg cost vs current price: 5–15% above avg cost is healthy
+
+### 4. Entry Preference (Pullback to Support)
+- **Ideal entry**: shrinking-volume pullback to MA5 that finds support
+- **Secondary entry**: pullback to MA10 that finds support
+- **Stand aside**: when price breaks below MA20
+
+### 5. Key Risk Checklist
+- Share reduction announcements, earnings loss warnings, regulatory penalties,
+  adverse sector policy, large unlock events
+
+### 6. Valuation Awareness (P/E / P/B)
+- When P/E is notably elevated, include it as a risk point
+
+### 7. Strong Trend Relaxation
+- For strongly trending stocks, the bias rate limit may be slightly relaxed;
+  take a small position but always set a stop-loss
+"""
+
 
 def get_default_trading_skill_policy(*, explicit_skill_selection: bool) -> str:
-    """Return the legacy default trading baseline only for implicit/default runs.
+    """Return the default trading baseline only for implicit/default runs.
 
     When a caller explicitly chooses a skill (via request payload or config),
     analysis should follow that selected skill alone instead of silently
-    layering the old bull-trend baseline on top.
+    layering the baseline on top.
     """
     if explicit_skill_selection:
         return ""
-    return CORE_TRADING_SKILL_POLICY_ZH
+    return CORE_TRADING_SKILL_POLICY_EN
 
 
 def get_default_technical_skill_policy(*, explicit_skill_selection: bool) -> str:

@@ -531,30 +531,30 @@ Lagging: {bottom_sectors_text if bottom_sectors_text else "N/A"}"""
 Output the report content directly, no extra commentary.
 """
 
-        # A 股场景使用中文提示语
-        return f"""你是一位专业的A/H/美股市场分析师，请根据以下数据生成一份简洁的大盘复盘报告。
+        # Chinese market prompt — translated to English
+        return f"""You are a professional A/H/US stock market analyst. Based on the data below, generate a concise daily market review report.
 
-【重要】输出要求：
-- 必须输出纯 Markdown 文本格式
-- 禁止输出 JSON 格式
-- 禁止输出代码块
-- emoji 仅在标题处少量使用（每个标题最多1个）
+[Important] Output requirements:
+- Output in plain Markdown text format only
+- Do not output JSON format
+- Do not output code blocks
+- Use emojis sparingly, only in headings (max 1 per heading)
 
 ---
 
-# 今日市场数据
+# Today's Market Data
 
-## 日期
+## Date
 {overview.date}
 
-## 主要指数
+## Major Indices
 {indices_placeholder}
 
 {stats_block}
 
 {sector_block}
 
-## 市场新闻
+## Market News
 {news_placeholder}
 
 {data_no_indices_hint}
@@ -563,34 +563,34 @@ Output the report content directly, no extra commentary.
 
 ---
 
-# 输出格式模板（请严格按此格式输出）
+# Output Format Template (follow this structure strictly)
 
-## {overview.date} 大盘复盘
+## {overview.date} Market Review
 
-### 一、市场总结
-（2-3句话概括今日市场整体表现，包括指数涨跌、成交量变化）
+### 1. Market Summary
+(2-3 sentences summarizing overall market performance today, including index moves and volume changes)
 
-### 二、指数点评
-（{self.profile.prompt_index_hint}）
+### 2. Index Commentary
+({self.profile.prompt_index_hint})
 
-### 三、资金动向
-（解读成交额流向的含义）
+### 3. Capital Flow
+(Interpret the meaning of turnover/money flow direction)
 
-### 四、热点解读
-（分析领涨领跌板块背后的逻辑和驱动因素）
+### 4. Sector Hot Topics
+(Analyze the logic and driving factors behind leading and lagging sectors)
 
-### 五、后市展望
-（结合当前走势和新闻，给出明日市场预判）
+### 5. Outlook
+(Based on current trend and news, give tomorrow's market expectation)
 
-### 六、风险提示
-（需要关注的风险点）
+### 6. Risk Warnings
+(Key risk points to watch)
 
-### 七、策略计划
-（给出进攻/均衡/防守结论，对应仓位建议，并给出一个触发失效条件；最后补充“建议仅供参考，不构成投资建议”。）
+### 7. Strategy Plan
+(Give an Aggressive/Balanced/Defensive conclusion with position sizing advice and one invalidation trigger; end with "For reference only, not investment advice.")
 
 ---
 
-请直接输出复盘报告内容，不要输出其他说明文字。
+Output the report content directly, no extra commentary.
 """
     
     def _generate_template_review(self, overview: MarketOverview, news: List) -> str:
@@ -609,15 +609,15 @@ Output the report content directly, no extra commentary.
         )
         if mood_index:
             if mood_index.change_pct > 1:
-                market_mood = "强势上涨"
+                market_mood = "strong rally"
             elif mood_index.change_pct > 0:
-                market_mood = "小幅上涨"
+                market_mood = "mild gain"
             elif mood_index.change_pct > -1:
-                market_mood = "小幅下跌"
+                market_mood = "mild decline"
             else:
-                market_mood = "明显下跌"
+                market_mood = "notable drop"
         else:
-            market_mood = "震荡整理"
+            market_mood = "sideways consolidation"
         
         # 指数行情（简洁格式）
         indices_text = ""
@@ -625,43 +625,43 @@ Output the report content directly, no extra commentary.
             direction = "↑" if idx.change_pct > 0 else "↓" if idx.change_pct < 0 else "-"
             indices_text += f"- **{idx.name}**: {idx.current:.2f} ({direction}{abs(idx.change_pct):.2f}%)\n"
         
-        # 板块信息
-        top_text = "、".join([s['name'] for s in overview.top_sectors[:3]])
-        bottom_text = "、".join([s['name'] for s in overview.bottom_sectors[:3]])
-        
-        # 按 region 决定是否包含涨跌统计和板块（美股无）
+        # Sector info
+        top_text = ", ".join([s['name'] for s in overview.top_sectors[:3]])
+        bottom_text = ", ".join([s['name'] for s in overview.bottom_sectors[:3]])
+
+        # Include advance/decline stats and sectors only for markets that have them
         stats_section = ""
         if self.profile.has_market_stats:
             stats_section = f"""
-### 三、涨跌统计
-| 指标 | 数值 |
-|------|------|
-| 上涨家数 | {overview.up_count} |
-| 下跌家数 | {overview.down_count} |
-| 涨停 | {overview.limit_up_count} |
-| 跌停 | {overview.limit_down_count} |
-| 两市成交额 | {overview.total_amount:.0f}亿 |
+### 3. Advance/Decline Statistics
+| Indicator | Value |
+|-----------|-------|
+| Advancing | {overview.up_count} |
+| Declining | {overview.down_count} |
+| Limit Up | {overview.limit_up_count} |
+| Limit Down | {overview.limit_down_count} |
+| Total Turnover | {overview.total_amount:.0f}B |
 """
         sector_section = ""
         if self.profile.has_sector_rankings and (top_text or bottom_text):
             sector_section = f"""
-### 四、板块表现
-- **领涨**: {top_text}
-- **领跌**: {bottom_text}
+### 4. Sector Performance
+- **Leaders**: {top_text}
+- **Laggards**: {bottom_text}
 """
-        market_label = "A股" if self.region == "cn" else "美股"
+        market_label = "A-share" if self.region == "cn" else "US stock"
         strategy_summary = self.strategy.to_markdown_block()
-        report = f"""## {overview.date} 大盘复盘
+        report = f"""## {overview.date} Market Review
 
-### 一、市场总结
-今日{market_label}市场整体呈现**{market_mood}**态势。
+### 1. Market Summary
+Today's {market_label} market showed a **{market_mood}** trend overall.
 
-### 二、主要指数
+### 2. Major Indices
 {indices_text}
 {stats_section}
 {sector_section}
-### 五、风险提示
-市场有风险，投资需谨慎。以上数据仅供参考，不构成投资建议。
+### 5. Risk Warning
+Markets involve risk; invest prudently. The above data is for reference only and does not constitute investment advice.
 
 {strategy_summary}
 
