@@ -319,9 +319,9 @@ class StockTrendAnalyzer:
             gain = delta.where(delta > 0, 0)
             loss = -delta.where(delta < 0, 0)
 
-            # 计算平均涨跌幅
-            avg_gain = gain.rolling(window=period).mean()
-            avg_loss = loss.rolling(window=period).mean()
+            # Wilder's smoothed averages (alpha = 1/period) — matches standard RSI
+            avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean()
+            avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
 
             # 计算 RS 和 RSI
             rs = avg_gain / avg_loss
@@ -616,14 +616,15 @@ class StockTrendAnalyzer:
 
         # === 乖离率评分（20分，强势趋势补偿）===
         bias = result.bias_ma5
-        if bias != bias or bias is None:  # NaN or None defense
+        if pd.isna(bias) or bias is None:
             bias = 0.0
-        base_threshold = get_config().bias_threshold
+        cfg = get_config()
+        base_threshold = cfg.bias_threshold
 
         # Strong trend compensation: relax threshold for STRONG_BULL with high strength
-        trend_strength = result.trend_strength if result.trend_strength == result.trend_strength else 0.0
-        if result.trend_status == TrendStatus.STRONG_BULL and (trend_strength or 0) >= 70:
-            effective_threshold = base_threshold * 1.5
+        trend_strength = 0.0 if pd.isna(result.trend_strength) else result.trend_strength
+        if result.trend_status == TrendStatus.STRONG_BULL and trend_strength >= 70:
+            effective_threshold = base_threshold * cfg.strong_trend_bias_multiplier
             is_strong_trend = True
         else:
             effective_threshold = base_threshold
