@@ -1,4 +1,29 @@
+# Core data & analysis
 yfinance>=0.2.40
 pandas>=2.2.0
 numpy>=1.26.0
+
+# Web framework
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic>=2.7.0
+python-multipart>=0.0.7
+
+# Database
+sqlalchemy>=2.0.0
+peewee>=3.17.0
+
+# LLM
+litellm>=1.40.0
+
+# HTTP & networking
+requests>=2.31.0
+httpx>=0.27.0
+trafilatura>=1.8.0
+
+# Utilities
 python-dotenv>=1.0.0
+tenacity>=8.2.0
+markdown2>=2.4.0
+json-repair>=0.28.0
+fake-useragent>=1.5.0
