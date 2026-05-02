@@ -123,7 +123,7 @@ class ValidateSystemConfigResponse(BaseModel):
     issues: List[ConfigValidationIssue]
 
 
-class TestLLMChannelRequest(BaseModel):
+class LLMChannelTestRequest(BaseModel):
     """Request payload for testing one LLM channel."""
 
     name: str = "channel"
@@ -135,7 +135,7 @@ class TestLLMChannelRequest(BaseModel):
     timeout_seconds: float = 20.0
 
 
-class TestLLMChannelResponse(BaseModel):
+class LLMChannelTestResponse(BaseModel):
     """Response payload for one LLM channel connectivity test."""
 
     success: bool

@@ -31,6 +31,7 @@ if os.getenv("GITHUB_ACTIONS") != "true" and os.getenv("USE_PROXY", "false").low
     os.environ["https_proxy"] = proxy_url
 
 import argparse
+import pytest
 import logging
 import sys
 from datetime import datetime, date, timedelta
@@ -91,7 +92,7 @@ def test_config():
     if not any(i.severity in ("error", "warning") for i in issues):
         print("  ✓ 关键配置项验证通过")
     
-    return True
+    assert True
 
 
 def view_database():
@@ -172,9 +173,10 @@ def view_database():
     finally:
         session.close()
     
-    return True
+    assert True
 
 
+@pytest.mark.network
 def test_data_fetch(stock_code: str = "600519"):
     """测试数据获取"""
     print_header("3. 数据获取测试")
@@ -203,13 +205,15 @@ def test_data_fetch(stock_code: str = "600519"):
             existing_cols = [c for c in preview_cols if c in df.columns]
             print(df[existing_cols].tail().to_string(index=False))
         
-        return True
-        
+        assert True
+        return
+
     except Exception as e:
         print(f"  ✗ 获取失败: {e}")
-        return False
+        raise
 
 
+@pytest.mark.network
 def test_llm():
     """测试 LLM 调用"""
     print_header("4. LLM (Gemini) 调用测试")
@@ -291,8 +295,9 @@ def test_llm():
         if not result.success:
             print(f"\n  ⚠ 注意: {result.error_message}")
         
-        return result.success
-        
+        assert result.success
+        return
+
     except Exception as e:
         elapsed = time.time() - start_time
         print(f"\n  ✗ API 调用失败 (耗时: {elapsed:.2f}秒)")
@@ -310,9 +315,10 @@ def test_llm():
         elif 'model' in error_str:
             print(f"\n  诊断: 模型名称可能不正确，尝试修改 .env 中的 GEMINI_MODEL")
         
-        return False
+        raise
 
 
+@pytest.mark.network
 def test_notification():
     """测试通知推送"""
     print_header("5. 通知推送测试")
@@ -353,11 +359,12 @@ def test_notification():
         else:
             print(f"  ✗ 消息发送失败")
         
-        return success
-        
+        assert success
+        return
+
     except Exception as e:
         print(f"  ✗ 发送异常: {e}")
-        return False
+        raise
 
 
 def run_all_tests():
@@ -371,14 +378,16 @@ def run_all_tests():
     
     # 1. 配置测试
     try:
-        results['配置加载'] = test_config()
+        test_config()
+        results['配置加载'] = True
     except Exception as e:
         print(f"  ✗ 配置测试失败: {e}")
         results['配置加载'] = False
-    
+
     # 2. 数据库查看
     try:
-        results['数据库'] = view_database()
+        view_database()
+        results['数据库'] = True
     except Exception as e:
         print(f"  ✗ 数据库测试失败: {e}")
         results['数据库'] = False

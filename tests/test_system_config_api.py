@@ -14,7 +14,7 @@ from tests.litellm_stub import ensure_litellm_stub
 ensure_litellm_stub()
 
 from api.v1.endpoints import system_config
-from api.v1.schemas.system_config import TestLLMChannelRequest, UpdateSystemConfigRequest
+from api.v1.schemas.system_config import LLMChannelTestRequest, UpdateSystemConfigRequest
 from src.config import Config
 from src.core.config_manager import ConfigManager
 from src.services.system_config_service import SystemConfigService
@@ -138,7 +138,7 @@ class SystemConfigApiTestCase(unittest.TestCase):
             },
         ) as mock_test:
             payload = system_config.test_llm_channel(
-                request=TestLLMChannelRequest(
+                request=LLMChannelTestRequest(
                     name="primary",
                     protocol="openai",
                     base_url="https://api.example.com/v1",

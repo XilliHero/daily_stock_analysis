@@ -14,8 +14,8 @@ from api.v1.schemas.system_config import (
     SystemConfigResponse,
     SystemConfigSchemaResponse,
     SystemConfigValidationErrorResponse,
-    TestLLMChannelRequest,
-    TestLLMChannelResponse,
+    LLMChannelTestRequest,
+    LLMChannelTestResponse,
     UpdateSystemConfigRequest,
     UpdateSystemConfigResponse,
     ValidateSystemConfigRequest,
@@ -143,7 +143,7 @@ def validate_system_config(
 
 @router.post(
     "/config/llm/test-channel",
-    response_model=TestLLMChannelResponse,
+    response_model=LLMChannelTestResponse,
     responses={
         200: {"description": "Channel test completed"},
         500: {"description": "Internal server error", "model": ErrorResponse},
@@ -152,9 +152,9 @@ def validate_system_config(
     description="Run a minimal LLM request against one unsaved or saved channel definition.",
 )
 def test_llm_channel(
-    request: TestLLMChannelRequest,
+    request: LLMChannelTestRequest,
     service: SystemConfigService = Depends(get_system_config_service),
-) -> TestLLMChannelResponse:
+) -> LLMChannelTestResponse:
     """Validate and test one channel definition without writing `.env`."""
     try:
         payload = service.test_llm_channel(
@@ -166,7 +166,7 @@ def test_llm_channel(
             enabled=request.enabled,
             timeout_seconds=request.timeout_seconds,
         )
-        return TestLLMChannelResponse.model_validate(payload)
+        return LLMChannelTestResponse.model_validate(payload)
     except (ValueError, TypeError) as exc:
         raise HTTPException(
             status_code=422,
