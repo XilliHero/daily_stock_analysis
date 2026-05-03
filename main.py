@@ -216,6 +216,8 @@ def parse_arguments() -> argparse.Namespace:
   python main.py --single-notify    # 启用单股推送模式（每分析完一只立即推送）
   python main.py --schedule         # 启用定时任务模式
   python main.py --market-review    # 仅运行大盘复盘
+  python main.py --market-scan      # Run US & CA market scanner (all strategies)
+  python main.py --market-scan --scan-strategy value --scan-region us
         '''
     )
 
@@ -355,6 +357,34 @@ def parse_arguments() -> argparse.Namespace:
         '--backtest-force',
         action='store_true',
         help='强制回测（即使已有回测结果也重新计算）'
+    )
+
+    # === Market Scanner ===
+    parser.add_argument(
+        '--market-scan',
+        action='store_true',
+        help='Run the market scanner agent team (US & CA stocks)'
+    )
+
+    parser.add_argument(
+        '--scan-strategy',
+        type=str,
+        default=None,
+        help='Scanner strategy: value, growth, dividend, recovery (comma-separated for multiple; default: all four)'
+    )
+
+    parser.add_argument(
+        '--scan-region',
+        type=str,
+        default='us_ca',
+        help='Scanner region: us, ca, or us_ca (default: us_ca)'
+    )
+
+    parser.add_argument(
+        '--scan-top-n',
+        type=int,
+        default=50,
+        help='Number of top picks per strategy (default: 50)'
     )
 
     return parser.parse_args()
@@ -817,6 +847,44 @@ def main() -> int:
                 f"回测完成: processed={stats.get('processed')} saved={stats.get('saved')} "
                 f"completed={stats.get('completed')} insufficient={stats.get('insufficient')} errors={stats.get('errors')}"
             )
+            return 0
+
+        # Market Scanner mode
+        if getattr(args, 'market_scan', False):
+            logger.info("Mode: Market Scanner")
+            from src.scanner.pipeline import run_market_scan, run_multi_strategy_scan
+
+            scan_region = getattr(args, 'scan_region', 'us_ca')
+            scan_top_n = getattr(args, 'scan_top_n', 50)
+            raw_strategies = getattr(args, 'scan_strategy', None)
+
+            if raw_strategies:
+                strategy_list = [s.strip() for s in raw_strategies.split(',') if s.strip()]
+            else:
+                strategy_list = ["value", "growth", "dividend", "recovery"]
+
+            results = run_multi_strategy_scan(
+                strategies=strategy_list,
+                regions=scan_region,
+                top_n=scan_top_n,
+            )
+
+            for res in results:
+                if res.report and res.report.markdown:
+                    output_dir = os.path.join("output", "scans")
+                    os.makedirs(output_dir, exist_ok=True)
+                    filename = f"scan_{res.strategy}_{datetime.now().strftime('%Y%m%d_%H%M')}.md"
+                    filepath = os.path.join(output_dir, filename)
+                    with open(filepath, "w", encoding="utf-8") as f:
+                        f.write(res.report.markdown)
+                    logger.info(
+                        "Strategy '%s': %d picks → %s (%.1fs)",
+                        res.strategy, len(res.report.top_picks), filepath, res.duration_s,
+                    )
+                elif res.errors:
+                    logger.warning("Strategy '%s' failed: %s", res.strategy, res.errors)
+
+            logger.info("Market scan complete.")
             return 0
 
         # 模式1: 仅大盘复盘
