@@ -871,6 +871,7 @@ def main() -> int:
         # Market Scanner mode
         if getattr(args, 'market_scan', False):
             logger.info("Mode: Market Scanner")
+            from src.notification import NotificationService
             from src.scanner.pipeline import run_market_scan, run_multi_strategy_scan
 
             scan_region = getattr(args, 'scan_region', 'us_ca')
@@ -888,6 +889,7 @@ def main() -> int:
                 top_n=scan_top_n,
             )
 
+            all_reports: list[str] = []
             for res in results:
                 if res.report and res.report.markdown:
                     output_dir = os.path.join("output", "scans")
@@ -896,12 +898,24 @@ def main() -> int:
                     filepath = os.path.join(output_dir, filename)
                     with open(filepath, "w", encoding="utf-8") as f:
                         f.write(res.report.markdown)
+                    all_reports.append(res.report.markdown)
                     logger.info(
                         "Strategy '%s': %d picks → %s (%.1fs)",
                         res.strategy, len(res.report.top_picks), filepath, res.duration_s,
                     )
                 elif res.errors:
                     logger.warning("Strategy '%s' failed: %s", res.strategy, res.errors)
+
+            if all_reports and not getattr(args, 'no_notify', False):
+                notifier = NotificationService()
+                combined = "\n\n---\n\n".join(all_reports)
+                date_str = datetime.now().strftime('%Y-%m-%d')
+                subject = f"Market Scan Report — {date_str}"
+                sent = notifier.send_to_email(combined, subject=subject)
+                if sent:
+                    logger.info("Market scan report emailed successfully.")
+                else:
+                    logger.warning("Email not sent — check EMAIL_SENDER / EMAIL_PASSWORD in .env")
 
             logger.info("Market scan complete.")
             return 0
