@@ -12,9 +12,11 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
+from io import StringIO
 from typing import Dict, List, Optional, Set
 
 import pandas as pd
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +129,7 @@ class UniverseAgent:
 
         for index_name, url in index_sources.items():
             try:
-                tables = pd.read_html(url)
+                tables = self._fetch_tables(url)
                 if not tables:
                     errors.append(f"{index_name}: no tables found")
                     continue
@@ -171,7 +173,7 @@ class UniverseAgent:
 
         url = "https://en.wikipedia.org/wiki/S%26P/TSX_Composite_Index"
         try:
-            tables = pd.read_html(url)
+            tables = self._fetch_tables(url)
             df = None
             for table in tables:
                 cols_lower = [str(c).lower() for c in table.columns]
@@ -225,6 +227,17 @@ class UniverseAgent:
                 continue
             filtered.append(s)
         return filtered
+
+    @staticmethod
+    def _fetch_tables(url: str) -> List[pd.DataFrame]:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/125.0.0.0 Safari/537.36"
+        }
+        resp = requests.get(url, headers=headers, timeout=30)
+        resp.raise_for_status()
+        return pd.read_html(StringIO(resp.text))
 
     @staticmethod
     def _find_column(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
