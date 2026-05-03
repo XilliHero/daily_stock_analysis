@@ -218,6 +218,7 @@ def parse_arguments() -> argparse.Namespace:
   python main.py --market-review    # 仅运行大盘复盘
   python main.py --market-scan      # Run US & CA market scanner (all strategies)
   python main.py --market-scan --scan-strategy value --scan-region us
+  python main.py --refresh-universe   # Update scanner stock universe from Wikipedia
         '''
     )
 
@@ -385,6 +386,12 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         default=50,
         help='Number of top picks per strategy (default: 50)'
+    )
+
+    parser.add_argument(
+        '--refresh-universe',
+        action='store_true',
+        help='Refresh the scanner stock universe CSVs from Wikipedia (run monthly)'
     )
 
     return parser.parse_args()
@@ -847,6 +854,18 @@ def main() -> int:
                 f"回测完成: processed={stats.get('processed')} saved={stats.get('saved')} "
                 f"completed={stats.get('completed')} insufficient={stats.get('insufficient')} errors={stats.get('errors')}"
             )
+            return 0
+
+        # Refresh universe CSVs
+        if getattr(args, 'refresh_universe', False):
+            logger.info("Mode: Refresh Universe")
+            from src.scanner.universe_agent import UniverseAgent
+
+            counts = UniverseAgent.refresh_from_wikipedia()
+            for key, count in counts.items():
+                logger.info("  %s: %d tickers saved", key, count)
+            if not counts:
+                logger.warning("  No data fetched — check network access to Wikipedia")
             return 0
 
         # Market Scanner mode

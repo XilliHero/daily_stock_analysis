@@ -2,17 +2,21 @@
 """
 Universe Agent — builds and caches the stock universe for scanning.
 
-Pulls index constituents for US (S&P 500, S&P 400, S&P 600) and
-Canadian (TSX Composite) markets via yfinance/Wikipedia, applies
-sector and market-cap tier filters, and returns a clean ticker list.
+Primary source: static CSV files shipped with the repo (data/scanner/).
+Optional refresh: pulls live data from Wikipedia to update the CSVs.
+
+Covers US (S&P 500, S&P 400, S&P 600) and Canadian (TSX Composite).
 """
 
 from __future__ import annotations
 
+import csv
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from io import StringIO
+from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 import pandas as pd
@@ -20,14 +24,22 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-# Sector filters use GICS sector names as returned by yfinance
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "scanner"
+
+CSV_FILES = {
+    "sp500": {"file": "sp500.csv", "cap_tier": "large", "exchange": "US", "country": "US"},
+    "sp400": {"file": "sp400.csv", "cap_tier": "mid", "exchange": "US", "country": "US"},
+    "sp600": {"file": "sp600.csv", "cap_tier": "small", "exchange": "US", "country": "US"},
+    "tsx": {"file": "tsx.csv", "cap_tier": "large", "exchange": "TSX", "country": "CA"},
+}
+
 VALID_SECTORS = {
     "Technology", "Healthcare", "Financials", "Energy",
     "Consumer Cyclical", "Consumer Defensive", "Industrials",
     "Basic Materials", "Communication Services", "Real Estate", "Utilities",
+    "Information Technology",
 }
 
-# Market-cap tiers (approximate USD boundaries)
 CAP_TIERS = {
     "large": (10_000_000_000, float("inf")),
     "mid": (2_000_000_000, 10_000_000_000),
@@ -62,7 +74,7 @@ class UniverseResult:
 
 
 class UniverseAgent:
-    """Builds the stock universe from index constituents."""
+    """Builds the stock universe from static CSV files."""
 
     def __init__(
         self,
@@ -90,13 +102,13 @@ class UniverseAgent:
         all_tickers: Dict[str, StockEntry] = {}
 
         if self.regions in ("us", "us_ca"):
-            us_stocks, us_errors = self._load_us_universe()
+            us_stocks, us_errors = self._load_from_csv("us")
             all_tickers.update(us_stocks)
             result.errors.extend(us_errors)
             result.regions_loaded.append("us")
 
         if self.regions in ("ca", "us_ca"):
-            ca_stocks, ca_errors = self._load_ca_universe()
+            ca_stocks, ca_errors = self._load_from_csv("ca")
             all_tickers.update(ca_stocks)
             result.errors.extend(ca_errors)
             result.regions_loaded.append("ca")
@@ -117,102 +129,43 @@ class UniverseAgent:
         )
         return result
 
-    def _load_us_universe(self) -> tuple[Dict[str, StockEntry], List[str]]:
+    def _load_from_csv(self, region: str) -> tuple[Dict[str, StockEntry], List[str]]:
         stocks: Dict[str, StockEntry] = {}
         errors: List[str] = []
 
-        index_sources = {
-            "S&P 500": "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies",
-            "S&P 400": "https://en.wikipedia.org/wiki/List_of_S%26P_400_companies",
-            "S&P 600": "https://en.wikipedia.org/wiki/List_of_S%26P_600_companies",
-        }
+        targets = []
+        if region == "us":
+            targets = ["sp500", "sp400", "sp600"]
+        elif region == "ca":
+            targets = ["tsx"]
 
-        for index_name, url in index_sources.items():
+        for key in targets:
+            meta = CSV_FILES[key]
+            csv_path = DATA_DIR / meta["file"]
+
+            if not csv_path.exists():
+                errors.append(f"{key}: CSV not found at {csv_path}. Run --refresh-universe to create it.")
+                continue
+
             try:
-                tables = self._fetch_tables(url)
-                if not tables:
-                    errors.append(f"{index_name}: no tables found")
-                    continue
-
-                df = tables[0]
-                symbol_col = self._find_column(df, ["Symbol", "Ticker", "Ticker symbol"])
-                name_col = self._find_column(df, ["Security", "Company", "Name"])
-                sector_col = self._find_column(df, ["GICS Sector", "Sector", "GICS sector"])
-                industry_col = self._find_column(df, ["GICS Sub-Industry", "Sub-Industry", "GICS sub-industry", "Industry"])
-
-                if symbol_col is None:
-                    errors.append(f"{index_name}: could not find symbol column")
-                    continue
-
-                cap_tier = "large" if "500" in index_name else "mid" if "400" in index_name else "small"
-
+                df = pd.read_csv(csv_path)
                 for _, row in df.iterrows():
-                    ticker = str(row.get(symbol_col, "")).strip().replace(".", "-")
+                    ticker = str(row.get("Symbol", "")).strip()
                     if not ticker:
                         continue
                     stocks[ticker] = StockEntry(
                         ticker=ticker,
-                        name=str(row.get(name_col, "")).strip() if name_col else "",
-                        sector=str(row.get(sector_col, "")).strip() if sector_col else "",
-                        industry=str(row.get(industry_col, "")).strip() if industry_col else "",
-                        exchange="US",
-                        country="US",
-                        cap_tier=cap_tier,
+                        name=str(row.get("Name", "")).strip(),
+                        sector=str(row.get("Sector", "")).strip(),
+                        industry=str(row.get("Industry", "")).strip(),
+                        exchange=meta["exchange"],
+                        country=meta["country"],
+                        cap_tier=meta["cap_tier"],
                     )
-
-                logger.info("[UniverseAgent] %s: loaded %d tickers", index_name, len(df))
+                logger.info("[UniverseAgent] %s: loaded %d tickers from CSV", key, len(df))
             except Exception as e:
-                errors.append(f"{index_name}: {e}")
-                logger.warning("[UniverseAgent] failed to load %s: %s", index_name, e)
-
-        return stocks, errors
-
-    def _load_ca_universe(self) -> tuple[Dict[str, StockEntry], List[str]]:
-        stocks: Dict[str, StockEntry] = {}
-        errors: List[str] = []
-
-        url = "https://en.wikipedia.org/wiki/S%26P/TSX_Composite_Index"
-        try:
-            tables = self._fetch_tables(url)
-            df = None
-            for table in tables:
-                cols_lower = [str(c).lower() for c in table.columns]
-                if any("symbol" in c or "ticker" in c for c in cols_lower):
-                    df = table
-                    break
-
-            if df is None:
-                errors.append("TSX Composite: could not find constituents table")
-                return stocks, errors
-
-            symbol_col = self._find_column(df, ["Symbol", "Ticker", "Ticker symbol"])
-            name_col = self._find_column(df, ["Company", "Name", "Security"])
-            sector_col = self._find_column(df, ["Sector", "GICS Sector", "GICS sector"])
-
-            if symbol_col is None:
-                errors.append("TSX Composite: could not find symbol column")
-                return stocks, errors
-
-            for _, row in df.iterrows():
-                raw_ticker = str(row.get(symbol_col, "")).strip()
-                if not raw_ticker:
-                    continue
-                ticker = raw_ticker if ".TO" in raw_ticker else f"{raw_ticker}.TO"
-                ticker = ticker.replace(".", "-", ticker.count(".") - 1)
-
-                stocks[ticker] = StockEntry(
-                    ticker=ticker,
-                    name=str(row.get(name_col, "")).strip() if name_col else "",
-                    sector=str(row.get(sector_col, "")).strip() if sector_col else "",
-                    exchange="TSX",
-                    country="CA",
-                    cap_tier="large",
-                )
-
-            logger.info("[UniverseAgent] TSX Composite: loaded %d tickers", len(stocks))
-        except Exception as e:
-            errors.append(f"TSX Composite: {e}")
-            logger.warning("[UniverseAgent] failed to load TSX Composite: %s", e)
+                errors.append(f"{key}: failed to read CSV: {e}")
+                logger.warning("[UniverseAgent] failed to load %s: %s", key, e)
 
         return stocks, errors
 
@@ -227,6 +180,100 @@ class UniverseAgent:
                 continue
             filtered.append(s)
         return filtered
+
+    # ------------------------------------------------------------------
+    # Wikipedia refresh (optional, called via --refresh-universe)
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def refresh_from_wikipedia(cls) -> Dict[str, int]:
+        """Fetch latest constituents from Wikipedia and save to CSV files."""
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        counts: Dict[str, int] = {}
+
+        us_sources = {
+            "sp500": "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies",
+            "sp400": "https://en.wikipedia.org/wiki/List_of_S%26P_400_companies",
+            "sp600": "https://en.wikipedia.org/wiki/List_of_S%26P_600_companies",
+        }
+
+        for key, url in us_sources.items():
+            try:
+                tables = cls._fetch_tables(url)
+                if not tables:
+                    logger.warning("[Refresh] %s: no tables found", key)
+                    continue
+
+                df = tables[0]
+                symbol_col = cls._find_column(df, ["Symbol", "Ticker", "Ticker symbol"])
+                name_col = cls._find_column(df, ["Security", "Company", "Name"])
+                sector_col = cls._find_column(df, ["GICS Sector", "Sector", "GICS sector"])
+                industry_col = cls._find_column(df, ["GICS Sub-Industry", "Sub-Industry", "GICS sub-industry", "Industry"])
+
+                if symbol_col is None:
+                    logger.warning("[Refresh] %s: no symbol column found", key)
+                    continue
+
+                rows = []
+                for _, row in df.iterrows():
+                    ticker = str(row.get(symbol_col, "")).strip().replace(".", "-")
+                    if not ticker:
+                        continue
+                    rows.append({
+                        "Symbol": ticker,
+                        "Name": str(row.get(name_col, "")).strip() if name_col else "",
+                        "Sector": str(row.get(sector_col, "")).strip() if sector_col else "",
+                        "Industry": str(row.get(industry_col, "")).strip() if industry_col else "",
+                    })
+
+                out_df = pd.DataFrame(rows)
+                out_path = DATA_DIR / CSV_FILES[key]["file"]
+                out_df.to_csv(out_path, index=False)
+                counts[key] = len(rows)
+                logger.info("[Refresh] %s: saved %d tickers to %s", key, len(rows), out_path)
+            except Exception as e:
+                logger.warning("[Refresh] %s failed: %s", key, e)
+
+        # TSX Composite
+        try:
+            tsx_url = "https://en.wikipedia.org/wiki/S%26P/TSX_Composite_Index"
+            tables = cls._fetch_tables(tsx_url)
+            df = None
+            for table in tables:
+                cols_lower = [str(c).lower() for c in table.columns]
+                if any("symbol" in c or "ticker" in c for c in cols_lower):
+                    df = table
+                    break
+
+            if df is not None:
+                symbol_col = cls._find_column(df, ["Symbol", "Ticker", "Ticker symbol"])
+                name_col = cls._find_column(df, ["Company", "Name", "Security"])
+                sector_col = cls._find_column(df, ["Sector", "GICS Sector", "GICS sector"])
+
+                if symbol_col:
+                    rows = []
+                    for _, row in df.iterrows():
+                        raw = str(row.get(symbol_col, "")).strip()
+                        if not raw:
+                            continue
+                        ticker = raw if ".TO" in raw else f"{raw}.TO"
+                        ticker = ticker.replace(".", "-", ticker.count(".") - 1)
+                        rows.append({
+                            "Symbol": ticker,
+                            "Name": str(row.get(name_col, "")).strip() if name_col else "",
+                            "Sector": str(row.get(sector_col, "")).strip() if sector_col else "",
+                            "Industry": "",
+                        })
+
+                    out_df = pd.DataFrame(rows)
+                    out_path = DATA_DIR / CSV_FILES["tsx"]["file"]
+                    out_df.to_csv(out_path, index=False)
+                    counts["tsx"] = len(rows)
+                    logger.info("[Refresh] tsx: saved %d tickers to %s", len(rows), out_path)
+        except Exception as e:
+            logger.warning("[Refresh] TSX failed: %s", e)
+
+        return counts
 
     @staticmethod
     def _fetch_tables(url: str) -> List[pd.DataFrame]:
