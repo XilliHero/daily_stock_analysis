@@ -262,9 +262,11 @@ class ScreenerAgent:
             info = yf.Ticker(sig.ticker).info
             sig.pe_ratio = info.get("trailingPE") or info.get("forwardPE")
             sig.pb_ratio = info.get("priceToBook")
-            sig.dividend_yield = info.get("dividendYield")
-            if sig.dividend_yield:
-                sig.dividend_yield *= 100  # convert to percentage
+            raw_yield = info.get("dividendYield")
+            if raw_yield and raw_yield > 0:
+                sig.dividend_yield = float(raw_yield) * 100 if raw_yield < 1 else float(raw_yield)
+                if sig.dividend_yield > 25:
+                    sig.dividend_yield = None
             sig.market_cap = info.get("marketCap", 0) or 0
         except Exception:
             return

@@ -26,13 +26,18 @@ logger = logging.getLogger(__name__)
 
 SECTOR_ETFS: Dict[str, str] = {
     "Technology": "XLK",
+    "Information Technology": "XLK",
     "Healthcare": "XLV",
+    "Health Care": "XLV",
     "Financials": "XLF",
     "Energy": "XLE",
     "Consumer Cyclical": "XLY",
+    "Consumer Discretionary": "XLY",
     "Consumer Defensive": "XLP",
+    "Consumer Staples": "XLP",
     "Industrials": "XLI",
     "Basic Materials": "XLB",
+    "Materials": "XLB",
     "Communication Services": "XLC",
     "Real Estate": "XLRE",
     "Utilities": "XLU",
@@ -111,8 +116,10 @@ class SectorAgent:
         return result
 
     def _analyze_sectors(self) -> Dict[str, SectorMetrics]:
-        etf_list = list(SECTOR_ETFS.values()) + [BROAD_MARKET_ETF]
+        unique_etfs = sorted(set(SECTOR_ETFS.values()))
+        etf_list = unique_etfs + [BROAD_MARKET_ETF]
         metrics: Dict[str, SectorMetrics] = {}
+        etf_metrics: Dict[str, SectorMetrics] = {}
 
         try:
             data = yf.download(
@@ -128,8 +135,9 @@ class SectorAgent:
 
         spy_returns = self._get_returns(data, BROAD_MARKET_ETF, len(etf_list))
 
-        for sector, etf in SECTOR_ETFS.items():
+        for etf in unique_etfs:
             try:
+                sector = next(k for k, v in SECTOR_ETFS.items() if v == etf)
                 sm = SectorMetrics(sector=sector, etf=etf)
 
                 if len(etf_list) == 1:
@@ -160,9 +168,13 @@ class SectorAgent:
                 sm.momentum_score = self._compute_momentum(close)
                 sm.trend = self._determine_trend(sm)
 
-                metrics[sector] = sm
+                etf_metrics[etf] = sm
             except Exception as e:
-                logger.debug("[SectorAgent] %s (%s) failed: %s", sector, etf, e)
+                logger.debug("[SectorAgent] %s failed: %s", etf, e)
+
+        for sector_name, etf in SECTOR_ETFS.items():
+            if etf in etf_metrics:
+                metrics[sector_name] = etf_metrics[etf]
 
         return metrics
 
