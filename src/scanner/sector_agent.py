@@ -94,15 +94,18 @@ class SectorAgent:
         t0 = time.time()
         result = SectorResult()
 
-        sector_metrics = self._analyze_sectors()
-        result.sector_rankings = sorted(
-            sector_metrics.values(), key=lambda s: s.momentum_score, reverse=True
-        )
+        etf_metrics = self._analyze_sectors()
 
-        for i, sm in enumerate(result.sector_rankings):
+        unique_rankings = list(etf_metrics.values())
+        unique_rankings.sort(key=lambda s: s.momentum_score, reverse=True)
+        for i, sm in enumerate(unique_rankings):
             sm.rank = i + 1
+        result.sector_rankings = unique_rankings
 
-        metrics_by_sector = {sm.sector: sm for sm in result.sector_rankings}
+        metrics_by_sector: Dict[str, SectorMetrics] = {}
+        for sector_name, etf in SECTOR_ETFS.items():
+            if etf in etf_metrics:
+                metrics_by_sector[sector_name] = etf_metrics[etf]
 
         for sig in candidates:
             sa = self._assess_stock(sig, metrics_by_sector)
@@ -116,9 +119,9 @@ class SectorAgent:
         return result
 
     def _analyze_sectors(self) -> Dict[str, SectorMetrics]:
+        """Returns metrics keyed by ETF ticker (e.g. 'XLK', 'XLV')."""
         unique_etfs = sorted(set(SECTOR_ETFS.values()))
         etf_list = unique_etfs + [BROAD_MARKET_ETF]
-        metrics: Dict[str, SectorMetrics] = {}
         etf_metrics: Dict[str, SectorMetrics] = {}
 
         try:
@@ -131,7 +134,7 @@ class SectorAgent:
             )
         except Exception as e:
             logger.warning("[SectorAgent] ETF download failed: %s", e)
-            return metrics
+            return etf_metrics
 
         spy_returns = self._get_returns(data, BROAD_MARKET_ETF, len(etf_list))
 
@@ -172,11 +175,7 @@ class SectorAgent:
             except Exception as e:
                 logger.debug("[SectorAgent] %s failed: %s", etf, e)
 
-        for sector_name, etf in SECTOR_ETFS.items():
-            if etf in etf_metrics:
-                metrics[sector_name] = etf_metrics[etf]
-
-        return metrics
+        return etf_metrics
 
     def _get_returns(self, data: Any, ticker: str, total_tickers: int) -> Dict[str, float]:
         returns = {"1w": 0.0, "1m": 0.0}
