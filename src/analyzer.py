@@ -44,7 +44,9 @@ from src.report_language import (
     normalize_report_language,
 )
 from src.schemas.report_schema import AnalysisReportSchema
-from src.market_context import get_market_role, get_market_guidelines
+from src.market_context import get_market_role, get_market_guidelines, detect_market
+
+MARKET_CURRENCY = {"us": "USD", "ca": "CAD", "hk": "HKD", "cn": "CNY"}
 
 logger = logging.getLogger(__name__)
 
@@ -1783,26 +1785,31 @@ Output the complete JSON Decision Dashboard."""
         return prompt
     
     def _format_volume(self, volume: Optional[float]) -> str:
-        """格式化成交量显示"""
+        """Format trading volume for display."""
         if volume is None:
             return 'N/A'
-        if volume >= 1e8:
-            return f"{volume / 1e8:.2f} 亿股"
-        elif volume >= 1e4:
-            return f"{volume / 1e4:.2f} 万股"
+        if volume >= 1e9:
+            return f"{volume / 1e9:.2f} B shares"
+        elif volume >= 1e6:
+            return f"{volume / 1e6:.2f} M shares"
+        elif volume >= 1e3:
+            return f"{volume / 1e3:.2f} K shares"
         else:
-            return f"{volume:.0f} 股"
-    
-    def _format_amount(self, amount: Optional[float]) -> str:
-        """格式化成交额显示"""
+            return f"{volume:.0f} shares"
+
+    def _format_amount(self, amount: Optional[float], market: str = "cn") -> str:
+        """Format trading value for display."""
         if amount is None:
             return 'N/A'
-        if amount >= 1e8:
-            return f"{amount / 1e8:.2f} 亿元"
-        elif amount >= 1e4:
-            return f"{amount / 1e4:.2f} 万元"
+        currency = MARKET_CURRENCY.get(market, "CNY")
+        if amount >= 1e9:
+            return f"{amount / 1e9:.2f} B {currency}"
+        elif amount >= 1e6:
+            return f"{amount / 1e6:.2f} M {currency}"
+        elif amount >= 1e3:
+            return f"{amount / 1e3:.2f} K {currency}"
         else:
-            return f"{amount:.0f} 元"
+            return f"{amount:.0f} {currency}"
 
     def _format_percent(self, value: Optional[float]) -> str:
         """格式化百分比显示"""
@@ -1827,14 +1834,19 @@ Output the complete JSON Decision Dashboard."""
         today = context.get('today', {}) or {}
         realtime = context.get('realtime', {}) or {}
         yesterday = context.get('yesterday', {}) or {}
+        code = context.get('code', '')
+        market = detect_market(code)
 
-        prev_close = yesterday.get('close')
+        # Prefer realtime pre_close over yesterday's bar close for consistency
+        # with the realtime price and change_pct values.
+        prev_close = realtime.get('pre_close') or yesterday.get('close')
         close = today.get('close')
         high = today.get('high')
         low = today.get('low')
 
         amplitude = None
         change_amount = None
+        pct_chg = None
         if prev_close not in (None, 0) and high is not None and low is not None:
             try:
                 amplitude = (float(high) - float(low)) / float(prev_close) * 100
@@ -1843,8 +1855,10 @@ Output the complete JSON Decision Dashboard."""
         if prev_close is not None and close is not None:
             try:
                 change_amount = float(close) - float(prev_close)
-            except (TypeError, ValueError):
+                pct_chg = (change_amount / float(prev_close)) * 100
+            except (TypeError, ValueError, ZeroDivisionError):
                 change_amount = None
+                pct_chg = None
 
         snapshot = {
             "date": context.get('date', '未知'),
@@ -1853,11 +1867,11 @@ Output the complete JSON Decision Dashboard."""
             "high": self._format_price(high),
             "low": self._format_price(low),
             "prev_close": self._format_price(prev_close),
-            "pct_chg": self._format_percent(today.get('pct_chg')),
+            "pct_chg": self._format_percent(pct_chg),
             "change_amount": self._format_price(change_amount),
             "amplitude": self._format_percent(amplitude),
             "volume": self._format_volume(today.get('volume')),
-            "amount": self._format_amount(today.get('amount')),
+            "amount": self._format_amount(today.get('amount'), market),
         }
 
         if realtime:

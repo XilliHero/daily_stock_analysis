@@ -953,13 +953,13 @@ class NotificationService(
                         report_lines.extend([
                             f"| {labels['price_metrics_label']} | {labels['current_price_label']} |",
                             "|---------|------|",
-                            f"| {labels['current_price_label']} | {price_data.get('current_price', 'N/A')} |",
-                            f"| {labels['ma5_label']} | {price_data.get('ma5', 'N/A')} |",
-                            f"| {labels['ma10_label']} | {price_data.get('ma10', 'N/A')} |",
-                            f"| {labels['ma20_label']} | {price_data.get('ma20', 'N/A')} |",
+                            f"| {labels['current_price_label']} | {self._fmt_price(price_data.get('current_price'))} |",
+                            f"| {labels['ma5_label']} | {self._fmt_price(price_data.get('ma5'))} |",
+                            f"| {labels['ma10_label']} | {self._fmt_price(price_data.get('ma10'))} |",
+                            f"| {labels['ma20_label']} | {self._fmt_price(price_data.get('ma20'))} |",
                             f"| {labels['bias_ma5_label']} | {price_data.get('bias_ma5', 'N/A')}% {bias_status} |",
-                            f"| {labels['support_level_label']} | {price_data.get('support_level', 'N/A')} |",
-                            f"| {labels['resistance_level_label']} | {price_data.get('resistance_level', 'N/A')} |",
+                            f"| {labels['support_level_label']} | {self._fmt_price(price_data.get('support_level'))} |",
+                            f"| {labels['resistance_level_label']} | {self._fmt_price(price_data.get('resistance_level'))} |",
                             "",
                         ])
                     # 量能分析
@@ -1493,8 +1493,19 @@ class NotificationService(
         "sina": {"zh": "新浪财经", "en": "Sina Finance"},
         "stooq": {"zh": "Stooq", "en": "Stooq"},
         "longbridge": {"zh": "长桥", "en": "Longbridge"},
+        "yfinance": {"zh": "Yahoo Finance", "en": "Yahoo Finance"},
         "fallback": {"zh": "降级兜底", "en": "Fallback"},
     }
+
+    @staticmethod
+    def _fmt_price(value: Any) -> str:
+        """Round a price to 2 decimal places for display, return N/A if missing."""
+        if value is None or value == 'N/A':
+            return 'N/A'
+        try:
+            return f"{float(value):.2f}"
+        except (TypeError, ValueError):
+            return str(value)
 
     def _get_source_display_name(self, source: Any, language: Optional[str]) -> str:
         raw_source = str(source or "N/A")
@@ -1516,9 +1527,9 @@ class NotificationService(
             "",
             f"| {labels['close_label']} | {labels['prev_close_label']} | {labels['open_label']} | {labels['high_label']} | {labels['low_label']} | {labels['change_pct_label']} | {labels['change_amount_label']} | {labels['amplitude_label']} | {labels['volume_label']} | {labels['amount_label']} |",
             "|------|------|------|------|------|-------|-------|------|--------|--------|",
-            f"| {snapshot.get('close', 'N/A')} | {snapshot.get('prev_close', 'N/A')} | "
-            f"{snapshot.get('open', 'N/A')} | {snapshot.get('high', 'N/A')} | "
-            f"{snapshot.get('low', 'N/A')} | {snapshot.get('pct_chg', 'N/A')} | "
+            f"| {self._fmt_price(snapshot.get('close'))} | {self._fmt_price(snapshot.get('prev_close'))} | "
+            f"{self._fmt_price(snapshot.get('open'))} | {self._fmt_price(snapshot.get('high'))} | "
+            f"{self._fmt_price(snapshot.get('low'))} | {snapshot.get('pct_chg', 'N/A')} | "
             f"{snapshot.get('change_amount', 'N/A')} | {snapshot.get('amplitude', 'N/A')} | "
             f"{snapshot.get('volume', 'N/A')} | {snapshot.get('amount', 'N/A')} |",
         ])
@@ -1529,7 +1540,7 @@ class NotificationService(
                 "",
                 f"| {labels['current_price_label']} | {labels['volume_ratio_label']} | {labels['turnover_rate_label']} | {labels['source_label']} |",
                 "|-------|------|--------|----------|",
-                f"| {snapshot.get('price', 'N/A')} | {snapshot.get('volume_ratio', 'N/A')} | "
+                f"| {self._fmt_price(snapshot.get('price'))} | {snapshot.get('volume_ratio', 'N/A')} | "
                 f"{snapshot.get('turnover_rate', 'N/A')} | {display_source} |",
             ])
 

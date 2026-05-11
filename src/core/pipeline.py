@@ -562,8 +562,9 @@ class StockAnalysisPipeline:
                 'name': getattr(realtime_quote, 'name', ''),
                 'price': getattr(realtime_quote, 'price', None),
                 'change_pct': getattr(realtime_quote, 'change_pct', None),
+                'pre_close': getattr(realtime_quote, 'pre_close', None),
                 'volume_ratio': volume_ratio,
-                'volume_ratio_desc': self._describe_volume_ratio(volume_ratio) if volume_ratio else '无数据',
+                'volume_ratio_desc': self._describe_volume_ratio(volume_ratio) if volume_ratio else 'No data',
                 'turnover_rate': getattr(realtime_quote, 'turnover_rate', None),
                 'pe_ratio': getattr(realtime_quote, 'pe_ratio', None),
                 'pb_ratio': getattr(realtime_quote, 'pb_ratio', None),
@@ -634,8 +635,13 @@ class StockAnalysisPipeline:
                     realtime_today['amount'] = amt
                 if pct is not None:
                     realtime_today['pct_chg'] = pct
+                # Merge remaining fields from the historical bar, but skip
+                # volume/amount/pct_chg — if the realtime source didn't
+                # provide them, showing N/A is better than stale/wrong data
+                # from a potentially mismatched historical source.
+                _SKIP_INHERIT = {'volume', 'amount', 'pct_chg'}
                 for k, v in orig_today.items():
-                    if k not in realtime_today and v is not None:
+                    if k not in realtime_today and k not in _SKIP_INHERIT and v is not None:
                         realtime_today[k] = v
                 enhanced['today'] = realtime_today
                 enhanced['ma_status'] = self._compute_ma_status(
@@ -972,17 +978,17 @@ class StockAnalysisPipeline:
         量比 = 当前成交量 / 过去5日平均成交量
         """
         if volume_ratio < 0.5:
-            return "极度萎缩"
+            return "Extreme Contraction"
         elif volume_ratio < 0.8:
-            return "明显萎缩"
+            return "Volume Contraction"
         elif volume_ratio < 1.2:
-            return "正常"
+            return "Normal Volume"
         elif volume_ratio < 2.0:
-            return "温和放量"
+            return "Moderate Expansion"
         elif volume_ratio < 3.0:
-            return "明显放量"
+            return "Volume Expansion"
         else:
-            return "巨量"
+            return "Surge Volume"
 
     @staticmethod
     def _compute_ma_status(close: float, ma5: float, ma10: float, ma20: float) -> str:
@@ -1054,9 +1060,13 @@ class StockAnalysisPipeline:
             if open_p is not None:
                 df.loc[idx, 'open'] = open_p
             if high_p is not None:
-                df.loc[idx, 'high'] = high_p
+                existing_high = df.loc[idx, 'high']
+                if pd.isna(existing_high) or high_p > existing_high:
+                    df.loc[idx, 'high'] = high_p
             if low_p is not None:
-                df.loc[idx, 'low'] = low_p
+                existing_low = df.loc[idx, 'low']
+                if pd.isna(existing_low) or low_p < existing_low:
+                    df.loc[idx, 'low'] = low_p
             if vol:
                 df.loc[idx, 'volume'] = vol
             if amt is not None:

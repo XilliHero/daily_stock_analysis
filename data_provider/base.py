@@ -154,12 +154,20 @@ def _is_etf_code(code: str) -> bool:
     )
 
 
+def _is_ca_market(code: str) -> bool:
+    """判断是否为加拿大 TSX 代码（.TO 后缀或 TSE: 前缀）。"""
+    normalized = (code or "").strip().upper()
+    return normalized.endswith(".TO") or normalized.startswith("TSE:")
+
+
 def _market_tag(code: str) -> str:
-    """返回市场标签: cn/us/hk."""
+    """返回市场标签: cn/us/hk/ca."""
     if _is_us_market(code):
         return "us"
     if _is_hk_market(code):
         return "hk"
+    if _is_ca_market(code):
+        return "ca"
     return "cn"
 
 
@@ -944,16 +952,20 @@ class DataFetcherManager:
         is_us_index = is_us_index_code(stock_code)
         is_us = is_us_index or is_us_stock_code(stock_code)
         is_hk = (not is_us) and _is_hk_market(stock_code)
+        is_ca = (not is_us) and (not is_hk) and _is_ca_market(stock_code)
 
-        # 美股（含美股指数）使用 Longbridge/YFinance 特殊路由；港股走下方通用数据源循环
-        if is_us:
+        # 美股（含美股指数）/ 加股使用 Longbridge/YFinance 特殊路由；港股走下方通用数据源循环
+        if is_us or is_ca:
             prefer_lb = self._longbridge_preferred() and not is_us_index
-            source_order = (
-                ["LongbridgeFetcher", "YfinanceFetcher"]
-                if prefer_lb
-                else ["YfinanceFetcher", "LongbridgeFetcher"]
-            )
-            market_label = "美股指数" if is_us_index else "美股"
+            if is_ca:
+                source_order = ["YfinanceFetcher", "LongbridgeFetcher"]
+                market_label = "加股"
+            elif prefer_lb:
+                source_order = ["LongbridgeFetcher", "YfinanceFetcher"]
+                market_label = "美股指数" if is_us_index else "美股"
+            else:
+                source_order = ["YfinanceFetcher", "LongbridgeFetcher"]
+                market_label = "美股指数" if is_us_index else "美股"
 
             for src_name in source_order:
                 for attempt, fetcher in enumerate(fetchers, start=1):
@@ -1157,23 +1169,31 @@ class DataFetcherManager:
             return None
 
         # ----------------------------------------------------------
-        # 美股 (指数 + 个股) / 港股 — 专用双源路由
+        # 美股 (指数 + 个股) / 港股 / 加股 — 专用双源路由
         #   配置长桥后: Longbridge 首选, YFinance/AkShare 补充
         #   未配置长桥: YFinance/AkShare 首选, Longbridge 补充
         #   美股指数:   始终 YFinance 首选（Longbridge 不提供指数行情）
+        #   加股 (.TO): 始终 YFinance 首选
         # ----------------------------------------------------------
         is_us_index = is_us_index_code(stock_code)
         is_us = is_us_index or _is_us_code(stock_code)
         is_hk = (not is_us) and _is_hk_market(stock_code)
+        is_ca = (not is_us) and (not is_hk) and _is_ca_market(stock_code)
 
-        if is_us or is_hk:
+        if is_us or is_hk or is_ca:
             prefer_lb = self._longbridge_preferred() and not is_us_index
-            if is_us:
+            if is_ca:
+                primary_src = "YfinanceFetcher"
+                secondary_src = "LongbridgeFetcher"
+                market_label = "加股"
+                primary_kw: dict = {}
+                secondary_kw: dict = {}
+            elif is_us:
                 primary_src = "LongbridgeFetcher" if prefer_lb else "YfinanceFetcher"
                 secondary_src = "YfinanceFetcher" if prefer_lb else "LongbridgeFetcher"
                 market_label = "美股指数" if is_us_index else "美股"
-                primary_kw: dict = {}
-                secondary_kw: dict = {}
+                primary_kw = {}
+                secondary_kw = {}
             else:
                 primary_src = "LongbridgeFetcher" if prefer_lb else "AkshareFetcher"
                 secondary_src = "AkshareFetcher" if prefer_lb else "LongbridgeFetcher"
@@ -1482,11 +1502,12 @@ class DataFetcherManager:
         # 3. 依次尝试各个数据源
         from .akshare_fetcher import _is_us_code
         is_us = _is_us_code(stock_code)
+        is_ca = _is_ca_market(stock_code)
         _US_CAPABLE_FETCHERS = {"YfinanceFetcher", "LongbridgeFetcher"}
         for fetcher in self._get_fetchers_snapshot():
             if not hasattr(fetcher, 'get_stock_name'):
                 continue
-            if is_us and fetcher.name not in _US_CAPABLE_FETCHERS:
+            if (is_us or is_ca) and fetcher.name not in _US_CAPABLE_FETCHERS:
                 continue
             try:
                 name = self._call_fetcher_method(fetcher, 'get_stock_name', stock_code)

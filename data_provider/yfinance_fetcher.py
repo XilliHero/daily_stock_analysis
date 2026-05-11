@@ -122,6 +122,17 @@ class YfinanceFetcher(BaseFetcher):
             logger.debug(f"转换港股代码: {stock_code} -> {hk_code}.HK")
             return f"{hk_code}.HK"
 
+        # TSX (Toronto Stock Exchange): pass through as-is
+        if code.endswith('.TO'):
+            logger.debug(f"Recognized as TSX ticker: {code}")
+            return code
+
+        # TSE:XXX prefix format -> XXX.TO
+        if code.startswith('TSE:'):
+            tsx_code = f"{code[4:]}.TO"
+            logger.debug(f"Converting TSE: prefix to .TO suffix: {code} -> {tsx_code}")
+            return tsx_code
+
         # 已经包含后缀的情况
         if '.SS' in code or '.SZ' in code or '.HK' in code or '.BJ' in code:
             return code
@@ -591,7 +602,7 @@ class YfinanceFetcher(BaseFetcher):
             quote = UnifiedRealtimeQuote(
                 code=user_code,
                 name=index_name or user_code,
-                source=RealtimeSource.FALLBACK,
+                source=RealtimeSource.YFINANCE,
                 price=price,
                 change_pct=round(change_pct, 2) if change_pct is not None else None,
                 change_amount=round(change_amount, 4) if change_amount is not None else None,
@@ -639,14 +650,17 @@ class YfinanceFetcher(BaseFetcher):
                 index_name=index_name,
             )
 
-        # 仅处理美股股票
-        if not self._is_us_stock(stock_code):
-            logger.debug(f"[Yfinance] {stock_code} 不是美股，跳过")
+        # 处理美股和加股（TSX .TO）
+        upper = stock_code.strip().upper()
+        is_tsx = upper.endswith('.TO') or upper.startswith('TSE:')
+        if not is_tsx and not self._is_us_stock(stock_code):
+            logger.debug(f"[Yfinance] {stock_code} 不是美股/加股，跳过")
             return None
 
         try:
-            symbol = stock_code.strip().upper()
-            logger.debug(f"[Yfinance] 获取美股 {symbol} 实时行情")
+            symbol = self._convert_stock_code(stock_code)
+            market_label = "加股" if is_tsx else "美股"
+            logger.debug(f"[Yfinance] 获取{market_label} {symbol} 实时行情")
 
             ticker = yf.Ticker(symbol)
 
@@ -695,36 +709,57 @@ class YfinanceFetcher(BaseFetcher):
             if high is not None and low is not None and prev_close is not None and prev_close > 0:
                 amplitude = ((high - low) / prev_close) * 100
 
-            # 获取股票名称
+            # 获取股票名称及基本面数据
+            pe_ratio = None
+            pb_ratio = None
+            turnover_rate = None
+            volume_ratio = None
             try:
-                info_name = ticker.info.get('shortName', '') or ticker.info.get('longName', '') or ''
+                full_info = ticker.info
+                info_name = full_info.get('shortName', '') or full_info.get('longName', '') or ''
                 name = info_name if is_meaningful_stock_name(info_name, symbol) else STOCK_NAME_MAP.get(symbol, '')
+                pe_ratio = full_info.get('trailingPE') or full_info.get('forwardPE')
+                pb_ratio = full_info.get('priceToBook')
+                float_shares = full_info.get('floatShares')
+                if float_shares and float_shares > 0 and volume:
+                    turnover_rate = round((volume / float_shares) * 100, 4)
             except Exception:
                 name = STOCK_NAME_MAP.get(symbol, '')
+
+            # Compute volume ratio (today / 5-day avg) from recent history
+            try:
+                hist_vol = ticker.history(period='10d')
+                if not hist_vol.empty and len(hist_vol) >= 2:
+                    avg_5d = float(hist_vol['Volume'].iloc[:-1].tail(5).mean())
+                    today_vol = float(hist_vol['Volume'].iloc[-1])
+                    if avg_5d > 0:
+                        volume_ratio = round(today_vol / avg_5d, 2)
+            except Exception:
+                pass
 
             quote = UnifiedRealtimeQuote(
                 code=symbol,
                 name=name,
-                source=RealtimeSource.FALLBACK,
+                source=RealtimeSource.YFINANCE,
                 price=price,
                 change_pct=round(change_pct, 2) if change_pct is not None else None,
                 change_amount=round(change_amount, 4) if change_amount is not None else None,
                 volume=volume,
                 amount=None,  # yfinance 不直接提供成交额
-                volume_ratio=None,
-                turnover_rate=None,
+                volume_ratio=volume_ratio,
+                turnover_rate=turnover_rate,
                 amplitude=round(amplitude, 2) if amplitude is not None else None,
                 open_price=open_price,
                 high=high,
                 low=low,
                 pre_close=prev_close,
-                pe_ratio=None,
-                pb_ratio=None,
+                pe_ratio=round(pe_ratio, 2) if pe_ratio is not None else None,
+                pb_ratio=round(pb_ratio, 2) if pb_ratio is not None else None,
                 total_mv=market_cap,
                 circ_mv=None,
             )
 
-            logger.info(f"[Yfinance] 获取美股 {symbol} 实时行情成功: 价格={price}")
+            logger.info(f"[Yfinance] 获取{market_label} {symbol} 实时行情成功: 价格={price}")
             return quote
 
         except Exception as e:
