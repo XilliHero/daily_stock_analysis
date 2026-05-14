@@ -51,6 +51,38 @@ from src.notification_sender import (
 logger = logging.getLogger(__name__)
 
 
+def _ensure_list(val: Any) -> list:
+    """Ensure a value is a list. If it's a string, wrap it; if None, return empty list.
+
+    Guards against LLM returning a string where a list is expected, which would
+    cause character-by-character iteration when rendering bullet points.
+    """
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str) and val.strip():
+        return [val]
+    if val is None:
+        return []
+    return list(val) if hasattr(val, '__iter__') else [val]
+
+
+def _fmt_pct(val: Any) -> str:
+    """Format a value as a percentage string. Only appends '%' if the value is numeric."""
+    if val is None:
+        return "N/A"
+    if isinstance(val, (int, float)):
+        return f"{val}%"
+    s = str(val).strip()
+    # If it already ends with % or looks non-numeric, return as-is
+    if s.endswith("%"):
+        return s
+    try:
+        float(s)
+        return f"{s}%"
+    except (ValueError, TypeError):
+        return s
+
+
 class NotificationChannel(Enum):
     """通知渠道类型"""
     WECHAT = "wechat"      # 企业微信
@@ -875,14 +907,14 @@ class NotificationService(
                     if intel.get('earnings_outlook'):
                         report_lines.append(f"**📊 {labels['earnings_outlook_label']}**: {intel['earnings_outlook']}")
                     # 风险警报（醒目显示）
-                    risk_alerts = intel.get('risk_alerts', [])
+                    risk_alerts = _ensure_list(intel.get('risk_alerts', []))
                     if risk_alerts:
                         report_lines.append("")
                         report_lines.append(f"**🚨 {labels['risk_alerts_label']}**:")
                         for alert in risk_alerts:
                             report_lines.append(f"- {alert}")
                     # 利好催化
-                    catalysts = intel.get('positive_catalysts', [])
+                    catalysts = _ensure_list(intel.get('positive_catalysts', []))
                     if catalysts:
                         report_lines.append("")
                         report_lines.append(f"**✨ {labels['positive_catalysts_label']}**:")
@@ -966,7 +998,7 @@ class NotificationService(
                     if vol_data:
                         report_lines.extend([
                             f"**{labels['volume_label']}**: {labels['volume_ratio_label']} {vol_data.get('volume_ratio', 'N/A')} ({vol_data.get('volume_status', '')}) | "
-                            f"{labels['turnover_rate_label']} {vol_data.get('turnover_rate', 'N/A')}%",
+                            f"{labels['turnover_rate_label']} {_fmt_pct(vol_data.get('turnover_rate', 'N/A'))}",
                             f"💡 *{vol_data.get('volume_meaning', '')}*",
                             "",
                         ])
@@ -1010,7 +1042,7 @@ class NotificationService(
                             "",
                         ])
                     # 检查清单
-                    checklist = battle.get('action_checklist', []) if battle else []
+                    checklist = _ensure_list(battle.get('action_checklist', []) if battle else [])
                     if checklist:
                         report_lines.extend([
                             f"**✅ {labels['checklist_heading']}**",
@@ -1170,7 +1202,7 @@ class NotificationService(
                     lines.append("")
                 
                 # 利好催化
-                catalysts = intel.get('positive_catalysts', []) if intel else []
+                catalysts = _ensure_list(intel.get('positive_catalysts', []) if intel else [])
                 if catalysts:
                     lines.append(f"✨ **{labels['positive_catalysts_label']}**:")
                     for cat in catalysts[:2]:  # 最多显示2条
@@ -1208,7 +1240,7 @@ class NotificationService(
                     lines.append("")
                 
                 # 检查清单简化版
-                checklist = battle.get('action_checklist', []) if battle else []
+                checklist = _ensure_list(battle.get('action_checklist', []) if battle else [])
                 if checklist:
                     # 只显示不通过的项目
                     failed_checks = [str(c) for c in checklist if str(c).startswith('❌') or str(c).startswith('⚠️')]
@@ -1438,7 +1470,7 @@ class NotificationService(
                     lines.append(f"- {str(risk)[:60]}")
             
             # 利好催化
-            catalysts = intel.get('positive_catalysts', [])
+            catalysts = _ensure_list(intel.get('positive_catalysts', []))
             if catalysts:
                 lines.append("")
                 lines.append(f"✨ **{labels['positive_catalysts_label']}**:")
