@@ -353,10 +353,10 @@ class MarketAnalyzer:
         if not has_stats:
             return ""
         lines = [
-            f"> 📈 上涨 **{overview.up_count}** 家 / 下跌 **{overview.down_count}** 家 / "
-            f"平盘 **{overview.flat_count}** 家 | "
-            f"涨停 **{overview.limit_up_count}** / 跌停 **{overview.limit_down_count}** | "
-            f"成交额 **{overview.total_amount:.0f}** 亿"
+            f"> 📈 Up **{overview.up_count}** / Down **{overview.down_count}** / "
+            f"Flat **{overview.flat_count}** | "
+            f"Limit-up **{overview.limit_up_count}** / Limit-down **{overview.limit_down_count}** | "
+            f"Turnover **{overview.total_amount:.0f}** bn CNY"
         ]
         return "\n".join(lines)
 
@@ -365,8 +365,8 @@ class MarketAnalyzer:
         if not overview.indices:
             return ""
         lines = [
-            "| 指数 | 最新 | 涨跌幅 | 成交额(亿) |",
-            "|------|------|--------|-----------|"]
+            "| Index | Latest | Change % | Turnover (bn) |",
+            "|-------|--------|----------|--------------|"]
         for idx in overview.indices:
             arrow = "🔴" if idx.change_pct < 0 else "🟢" if idx.change_pct > 0 else "⚪"
             amount_raw = idx.amount or 0.0
@@ -389,12 +389,12 @@ class MarketAnalyzer:
             top = " | ".join(
                 [f"**{s['name']}**({s['change_pct']:+.2f}%)" for s in overview.top_sectors[:5]]
             )
-            lines.append(f"> 🔥 领涨: {top}")
+            lines.append(f"> 🔥 Leading: {top}")
         if overview.bottom_sectors:
             bot = " | ".join(
                 [f"**{s['name']}**({s['change_pct']:+.2f}%)" for s in overview.bottom_sectors[:5]]
             )
-            lines.append(f"> 💧 领跌: {bot}")
+            lines.append(f"> 💧 Lagging: {bot}")
         return "\n".join(lines)
 
     def _build_review_prompt(self, overview: MarketOverview, news: List) -> str:
@@ -441,27 +441,27 @@ Lagging: {bottom_sectors_text if bottom_sectors_text else "N/A"}"""
                 sector_block = "## Sector Performance\n(US sector data not available.)"
         else:
             if self.profile.has_market_stats:
-                stats_block = f"""## 市场概况
-- 上涨: {overview.up_count} 家 | 下跌: {overview.down_count} 家 | 平盘: {overview.flat_count} 家
-- 涨停: {overview.limit_up_count} 家 | 跌停: {overview.limit_down_count} 家
-- 两市成交额: {overview.total_amount:.0f} 亿元"""
+                stats_block = f"""## Market Overview
+- Up: {overview.up_count} | Down: {overview.down_count} | Flat: {overview.flat_count}
+- Limit-up: {overview.limit_up_count} | Limit-down: {overview.limit_down_count}
+- Total turnover: {overview.total_amount:.0f} bn CNY"""
             else:
-                stats_block = "## 市场概况\n（美股暂无涨跌家数等统计）"
+                stats_block = "## Market Overview\n(Advance/decline stats not available for this market.)"
 
             if self.profile.has_sector_rankings:
-                sector_block = f"""## 板块表现
-领涨: {top_sectors_text if top_sectors_text else "暂无数据"}
-领跌: {bottom_sectors_text if bottom_sectors_text else "暂无数据"}"""
+                sector_block = f"""## Sector Performance
+Leading: {top_sectors_text if top_sectors_text else "No data"}
+Lagging: {bottom_sectors_text if bottom_sectors_text else "No data"}"""
             else:
-                sector_block = "## 板块表现\n（美股暂无板块涨跌数据）"
+                sector_block = "## Sector Performance\n(Sector ranking data not available for this market.)"
 
         data_no_indices_hint = (
-            "注意：由于行情数据获取失败，请主要根据【市场新闻】进行定性分析和总结，不要编造具体的指数点位。"
+            "Note: Market data fetch failed. Rely mainly on [Market News] for qualitative analysis. Do not invent index levels."
             if not indices_text
             else ""
         )
-        indices_placeholder = indices_text if indices_text else ("No index data (API error)" if self.region == "us" else "暂无指数数据（接口异常）")
-        news_placeholder = news_text if news_text else ("No relevant news" if self.region == "us" else "暂无相关新闻")
+        indices_placeholder = indices_text if indices_text else "No index data (API error)"
+        news_placeholder = news_text if news_text else "No relevant news"
 
         # 美股场景使用英文提示语，便于生成更符合美股语境的报告
         if self.region == "us":

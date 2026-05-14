@@ -115,6 +115,11 @@ class YfinanceFetcher(BaseFetcher):
             logger.debug(f"识别为美股代码: {code}")
             return code
 
+        # yfinance 特殊符号（含连字符，如 BTC-USD, ETH-USD），原样返回
+        if '-' in code:
+            logger.debug(f"识别为yfinance特殊符号: {code}")
+            return code
+
         # 港股：hk前缀 -> .HK后缀
         if code.startswith('HK'):
             hk_code = code[2:].lstrip('0') or '0'  # 去除前导0，但保留至少一个0
@@ -650,11 +655,13 @@ class YfinanceFetcher(BaseFetcher):
                 index_name=index_name,
             )
 
-        # 处理美股和加股（TSX .TO）
+        # 处理美股、加股（TSX .TO）和 yfinance 特殊符号（如 BTC-USD, CORN 等）
         upper = stock_code.strip().upper()
         is_tsx = upper.endswith('.TO') or upper.startswith('TSE:')
-        if not is_tsx and not self._is_us_stock(stock_code):
-            logger.debug(f"[Yfinance] {stock_code} 不是美股/加股，跳过")
+        # Accept symbols with hyphens (e.g. BTC-USD, ETH-USD) as valid yfinance codes
+        is_yf_special = '-' in upper
+        if not is_tsx and not is_yf_special and not self._is_us_stock(stock_code):
+            logger.debug(f"[Yfinance] {stock_code} 不是美股/加股/yfinance符号，跳过")
             return None
 
         try:
@@ -727,6 +734,8 @@ class YfinanceFetcher(BaseFetcher):
                 name = STOCK_NAME_MAP.get(symbol, '')
 
             # Compute volume ratio (today / 5-day avg) from recent history
+            # Also fix prev_close: fast_info.previousClose is often stale/wrong,
+            # whereas history[-2].Close matches the Yahoo Finance website value.
             try:
                 hist_vol = ticker.history(period='10d')
                 if not hist_vol.empty and len(hist_vol) >= 2:
@@ -734,6 +743,16 @@ class YfinanceFetcher(BaseFetcher):
                     today_vol = float(hist_vol['Volume'].iloc[-1])
                     if avg_5d > 0:
                         volume_ratio = round(today_vol / avg_5d, 2)
+                    # Override prev_close with history data (more accurate than fast_info)
+                    hist_prev = float(hist_vol['Close'].iloc[-2])
+                    if hist_prev > 0:
+                        prev_close = hist_prev
+                        # Recalculate change values with corrected prev_close
+                        if price is not None:
+                            change_amount = price - prev_close
+                            change_pct = (change_amount / prev_close) * 100
+                            if high is not None and low is not None:
+                                amplitude = ((high - low) / prev_close) * 100
             except Exception:
                 pass
 

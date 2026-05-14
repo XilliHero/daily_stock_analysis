@@ -950,11 +950,13 @@ class DataFetcherManager:
         #   - 未配置长桥:     YFinance 为首选（美股）, 通用 fetcher 循环（港股）
         #   - 美股指数:       始终 YFinance 为首选（Longbridge 不提供指数K线）
         is_us_index = is_us_index_code(stock_code)
-        is_us = is_us_index or is_us_stock_code(stock_code)
+        # Symbols with hyphens (e.g. BTC-USD, ETH-USD) are valid yfinance codes
+        is_yf_special = '-' in stock_code.strip()
+        is_us = is_us_index or is_us_stock_code(stock_code) or is_yf_special
         is_hk = (not is_us) and _is_hk_market(stock_code)
         is_ca = (not is_us) and (not is_hk) and _is_ca_market(stock_code)
 
-        # 美股（含美股指数）/ 加股使用 Longbridge/YFinance 特殊路由；港股走下方通用数据源循环
+        # 美股（含美股指数）/ 加股 / yfinance特殊符号 使用 Longbridge/YFinance 特殊路由；港股走下方通用数据源循环
         if is_us or is_ca:
             prefer_lb = self._longbridge_preferred() and not is_us_index
             if is_ca:
@@ -1176,7 +1178,9 @@ class DataFetcherManager:
         #   加股 (.TO): 始终 YFinance 首选
         # ----------------------------------------------------------
         is_us_index = is_us_index_code(stock_code)
-        is_us = is_us_index or _is_us_code(stock_code)
+        # Symbols with hyphens (e.g. BTC-USD, ETH-USD) are valid yfinance codes
+        is_yf_special = '-' in stock_code.strip()
+        is_us = is_us_index or _is_us_code(stock_code) or is_yf_special
         is_hk = (not is_us) and _is_hk_market(stock_code)
         is_ca = (not is_us) and (not is_hk) and _is_ca_market(stock_code)
 
@@ -1501,7 +1505,8 @@ class DataFetcherManager:
 
         # 3. 依次尝试各个数据源
         from .akshare_fetcher import _is_us_code
-        is_us = _is_us_code(stock_code)
+        is_yf_special = '-' in stock_code.strip()
+        is_us = _is_us_code(stock_code) or is_yf_special
         is_ca = _is_ca_market(stock_code)
         _US_CAPABLE_FETCHERS = {"YfinanceFetcher", "LongbridgeFetcher"}
         for fetcher in self._get_fetchers_snapshot():
