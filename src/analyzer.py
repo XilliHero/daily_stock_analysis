@@ -128,6 +128,255 @@ def apply_placeholder_fill(result: "AnalysisResult", missing_fields: List[str]) 
             result.dashboard["battle_plan"]["sniper_points"]["stop_loss"] = placeholder
 
 
+# ---------- LLM hallucination validator ----------
+
+import re as _re
+
+# Patterns that indicate the LLM claims a price decline
+_DECLINE_PATTERNS_EN = [
+    r"price\s+declin",
+    r"price\s+drop",
+    r"price\s+fell",
+    r"price\s+fall",
+    r"stock\s+declin",
+    r"stock\s+drop",
+    r"stock\s+fell",
+    r"下跌",
+    r"跌幅",
+]
+
+# Patterns that indicate the LLM claims a price increase
+_INCREASE_PATTERNS_EN = [
+    r"price\s+increas",
+    r"price\s+rose",
+    r"price\s+gain",
+    r"price\s+rally",
+    r"price\s+climb",
+    r"stock\s+rose",
+    r"stock\s+gain",
+    r"stock\s+rally",
+    r"上涨",
+    r"涨幅",
+]
+
+# Pattern to extract cited change percentages like "-2.63% price change" or "+1.5%"
+_PCT_CITATION_RE = _re.compile(
+    r"([+-]?\d+\.?\d*)\s*%\s*(?:price\s+change|change|涨跌幅|涨幅|跌幅)",
+    _re.IGNORECASE,
+)
+
+
+def validate_narrative_vs_data(
+    result: "AnalysisResult",
+    context: dict,
+) -> List[str]:
+    """
+    Post-processing check: detect LLM-generated narrative text that contradicts
+    the actual market data. Returns a list of correction descriptions (empty if clean).
+
+    Checks performed:
+    1. Direction mismatch: narrative says "price decline" but stock was up (or vice versa)
+    2. Cited percentage mismatch: narrative cites a specific change % that differs
+       significantly from the actual change %
+
+    When a contradiction is found, the affected text field is patched in-place with
+    a correction footnote, and the issue is logged as a warning.
+    """
+    corrections: List[str] = []
+
+    # --- Determine actual change % from context or market_snapshot ---
+    actual_pct = _extract_actual_change_pct(result, context)
+    if actual_pct is None:
+        return corrections  # Can't validate without actual data
+
+    # Near-zero threshold: if |change| < 0.05%, direction claims are ambiguous
+    DIRECTION_THRESHOLD = 0.05
+    actual_direction = (
+        "up" if actual_pct > DIRECTION_THRESHOLD
+        else "down" if actual_pct < -DIRECTION_THRESHOLD
+        else "flat"
+    )
+
+    # --- Scan all narrative fields ---
+    narrative_fields = [
+        "volume_analysis",
+        "analysis_summary",
+        "technical_analysis",
+        "trend_analysis",
+        "short_term_outlook",
+        "medium_term_outlook",
+        "pattern_analysis",
+        "fundamental_analysis",
+        "market_sentiment",
+        "key_points",
+        "buy_reason",
+    ]
+
+    for field_name in narrative_fields:
+        text = getattr(result, field_name, "") or ""
+        if not text.strip():
+            continue
+
+        patched, field_corrections = _check_and_patch_field(
+            text, field_name, actual_pct, actual_direction, result.code
+        )
+        if field_corrections:
+            setattr(result, field_name, patched)
+            corrections.extend(field_corrections)
+
+    # Also check dashboard narrative fields if present
+    if isinstance(result.dashboard, dict):
+        _validate_dashboard_narratives(result.dashboard, actual_pct, actual_direction, result.code, corrections)
+
+    return corrections
+
+
+def _extract_actual_change_pct(
+    result: "AnalysisResult", context: dict
+) -> Optional[float]:
+    """Extract the actual change percentage from available data sources."""
+    # 1. From AnalysisResult fields (set during analysis)
+    if result.change_pct is not None:
+        return float(result.change_pct)
+
+    # 2. From market_snapshot (built from context)
+    snap = result.market_snapshot
+    if snap and snap.get("pct_chg") not in (None, "N/A", ""):
+        try:
+            pct_str = str(snap["pct_chg"]).replace("%", "").strip()
+            return float(pct_str)
+        except (ValueError, TypeError):
+            pass
+
+    # 3. From context realtime data
+    rt = context.get("realtime") or {}
+    for key in ("change_pct", "pct_chg", "changepercent"):
+        val = rt.get(key)
+        if val is not None:
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                pass
+
+    # 4. Compute from context close / prev_close
+    today = context.get("today") or {}
+    close = today.get("close")
+    prev = (context.get("realtime") or {}).get("pre_close") or (context.get("yesterday") or {}).get("close")
+    if close is not None and prev not in (None, 0):
+        try:
+            return (float(close) - float(prev)) / float(prev) * 100
+        except (ValueError, TypeError, ZeroDivisionError):
+            pass
+
+    return None
+
+
+def _check_and_patch_field(
+    text: str,
+    field_name: str,
+    actual_pct: float,
+    actual_direction: str,
+    stock_code: str,
+) -> Tuple[str, List[str]]:
+    """
+    Check a single text field for direction/percentage contradictions.
+    Returns (patched_text, list_of_correction_descriptions).
+    """
+    corrections: List[str] = []
+
+    # --- Check 1: Direction contradiction ---
+    claims_decline = any(_re.search(p, text, _re.IGNORECASE) for p in _DECLINE_PATTERNS_EN)
+    claims_increase = any(_re.search(p, text, _re.IGNORECASE) for p in _INCREASE_PATTERNS_EN)
+
+    direction_mismatch = False
+    if claims_decline and actual_direction == "up":
+        direction_mismatch = True
+        correction_msg = (
+            f"[{stock_code}] {field_name}: LLM claims price decline but actual change is "
+            f"+{actual_pct:.2f}% (up)"
+        )
+        corrections.append(correction_msg)
+        logger.warning("[HallucinationCheck] %s", correction_msg)
+    elif claims_increase and actual_direction == "down":
+        direction_mismatch = True
+        correction_msg = (
+            f"[{stock_code}] {field_name}: LLM claims price increase but actual change is "
+            f"{actual_pct:.2f}% (down)"
+        )
+        corrections.append(correction_msg)
+        logger.warning("[HallucinationCheck] %s", correction_msg)
+
+    # --- Check 2: Cited percentage mismatch ---
+    for match in _PCT_CITATION_RE.finditer(text):
+        cited_pct = float(match.group(1))
+        # Allow small rounding differences (0.5% absolute tolerance)
+        if abs(cited_pct - actual_pct) > 0.5:
+            correction_msg = (
+                f"[{stock_code}] {field_name}: LLM cites {cited_pct:+.2f}% change but "
+                f"actual is {actual_pct:+.2f}%"
+            )
+            corrections.append(correction_msg)
+            logger.warning("[HallucinationCheck] %s", correction_msg)
+            # Replace the wrong percentage in-text
+            old_pct_str = match.group(0)
+            new_pct_str = old_pct_str.replace(
+                match.group(1), f"{actual_pct:+.2f}"
+            )
+            text = text.replace(old_pct_str, new_pct_str, 1)
+
+    # If direction was wrong, append a correction footnote
+    if direction_mismatch:
+        if actual_pct >= 0:
+            direction_word = "gain" if actual_pct > 0.05 else "flat"
+        else:
+            direction_word = "decline"
+        footnote = f" [Note: Actual price change was {actual_pct:+.2f}% ({direction_word}).]"
+        text = text.rstrip() + footnote
+
+    return text, corrections
+
+
+def _validate_dashboard_narratives(
+    dashboard: dict,
+    actual_pct: float,
+    actual_direction: str,
+    stock_code: str,
+    corrections: List[str],
+) -> None:
+    """Check narrative strings nested inside the dashboard dict structure."""
+    # Walk the dashboard looking for string values that might contain narrative
+    _walk_and_check(dashboard, "dashboard", actual_pct, actual_direction, stock_code, corrections)
+
+
+def _walk_and_check(
+    obj: Any,
+    path: str,
+    actual_pct: float,
+    actual_direction: str,
+    stock_code: str,
+    corrections: List[str],
+    depth: int = 0,
+) -> None:
+    """Recursively walk a dict/list and check string values for contradictions."""
+    if depth > 6:
+        return
+    if isinstance(obj, dict):
+        for key, val in obj.items():
+            _walk_and_check(val, f"{path}.{key}", actual_pct, actual_direction, stock_code, corrections, depth + 1)
+    elif isinstance(obj, list):
+        for i, item in enumerate(obj):
+            _walk_and_check(item, f"{path}[{i}]", actual_pct, actual_direction, stock_code, corrections, depth + 1)
+    elif isinstance(obj, str) and len(obj) > 20:
+        # Only check strings long enough to contain meaningful narrative
+        patched, field_corrections = _check_and_patch_field(
+            obj, path, actual_pct, actual_direction, stock_code
+        )
+        corrections.extend(field_corrections)
+        # Note: we can't easily patch nested dict strings in-place via setattr,
+        # but the corrections are logged. The top-level fields are the ones
+        # rendered in reports, so those patches matter most.
+
+
 # ---------- chip_structure fallback (Issue #589) ----------
 
 _CHIP_KEYS: tuple = ("profit_ratio", "avg_cost", "concentration", "chip_health")
@@ -1430,6 +1679,15 @@ Output strictly in the following JSON format — this is a complete Decision Das
                         missing_fields,
                     )
                     break
+
+            # --- Hallucination validation: check narrative vs actual data ---
+            hallucination_corrections = validate_narrative_vs_data(result, context)
+            if hallucination_corrections:
+                logger.warning(
+                    "[HallucinationCheck] %s(%s): found %d narrative-data contradiction(s):\n  %s",
+                    name, code, len(hallucination_corrections),
+                    "\n  ".join(hallucination_corrections),
+                )
 
             persist_llm_usage(llm_usage, model_used, call_type="analysis", stock_code=code)
 
