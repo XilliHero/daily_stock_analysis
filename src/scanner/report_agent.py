@@ -144,9 +144,13 @@ class ReportAgent:
                 change_pct=sig.change_pct,
                 screener_score=sig.score,
                 signal_names=list(sig.signal_names),
-                pe_ratio=sig.pe_ratio,
-                pb_ratio=sig.pb_ratio,
-                dividend_yield=sig.dividend_yield,
+                # Prefer fundamental data for display metrics (it covers the
+                # shortlist for every strategy); fall back to the screener signal.
+                # This keeps P/E, P/B, yield populated even for strategies where
+                # the screener skips the per-stock .info fetch (growth, recovery).
+                pe_ratio=(fd.pe_ratio if fd else None) or sig.pe_ratio,
+                pb_ratio=(fd.pb_ratio if fd else None) or sig.pb_ratio,
+                dividend_yield=(fd.dividend_yield if fd else None) or sig.dividend_yield,
             )
 
             if fd:

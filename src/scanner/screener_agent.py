@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 50
 HISTORY_DAYS = 40  # fetch a few extra to cover weekends/holidays
+REQUEST_TIMEOUT = 30  # seconds — cap yfinance calls so a throttled batch fails fast
 
 
 @dataclass
@@ -136,6 +137,7 @@ class ScreenerAgent:
                 group_by="ticker",
                 progress=False,
                 threads=True,
+                timeout=REQUEST_TIMEOUT,
             )
         except Exception as e:
             logger.warning("[ScreenerAgent] yf.download failed: %s", e)
@@ -257,7 +259,16 @@ class ScreenerAgent:
 
         return sig
 
+    def _uses_valuation(self) -> bool:
+        """True only if this strategy actually screens on valuation. Growth and
+        recovery don't, so we skip the slow per-stock `.info` fetch for them —
+        this is the single biggest yfinance rate-limit trigger."""
+        c = self.criteria
+        return bool(c.pe_max or c.pb_max or c.dividend_yield_min)
+
     def _check_valuation_signals(self, sig: StockSignals) -> None:
+        if not self._uses_valuation():
+            return  # strategy has no valuation criteria — the .info call is pure waste
         try:
             info = yf.Ticker(sig.ticker).info
             sig.pe_ratio = info.get("trailingPE") or info.get("forwardPE")

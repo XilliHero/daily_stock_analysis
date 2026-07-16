@@ -25,6 +25,20 @@ from src.scanner.strategy_profiles import StrategyProfile
 logger = logging.getLogger(__name__)
 
 
+def _normalize_dividend_yield(raw_yield: Any) -> Optional[float]:
+    """Normalize a yfinance dividendYield to a percentage (e.g. 3.2 for 3.2%).
+
+    yfinance reports the yield either as a fraction (0.032) or already as a
+    percent (3.2); values above 25% are treated as bad data. Mirrors the
+    screener's logic so display stays consistent when the screener skipped
+    the .info fetch. Returns None when unavailable/implausible.
+    """
+    if not raw_yield or raw_yield <= 0:
+        return None
+    value = float(raw_yield) * 100 if raw_yield < 1 else float(raw_yield)
+    return None if value > 25 else value
+
+
 @dataclass
 class FundamentalData:
     """Fundamental metrics for one stock."""
@@ -197,7 +211,7 @@ class FundamentalAgent:
         fd.ps_ratio = info.get("priceToSalesTrailing12Months")
         fd.peg_ratio = info.get("pegRatio")
         fd.ev_to_ebitda = info.get("enterpriseToEbitda")
-        fd.dividend_yield = sig.dividend_yield
+        fd.dividend_yield = sig.dividend_yield or _normalize_dividend_yield(info.get("dividendYield"))
         fd.payout_ratio = info.get("payoutRatio")
         if fd.payout_ratio is not None:
             fd.payout_ratio = float(fd.payout_ratio) * 100
