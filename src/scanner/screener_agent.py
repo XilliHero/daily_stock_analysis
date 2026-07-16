@@ -32,13 +32,20 @@ REQUEST_TIMEOUT = 30  # seconds — cap yfinance calls so a throttled batch fail
 
 
 def _extract_ticker_df(data, ticker: str, batch_len: int):
-    """Pull one ticker's OHLCV frame out of a (possibly multi-index) yf.download result."""
+    """Pull one ticker's OHLCV frame out of a yf.download result.
+
+    Keys on the column structure rather than batch size: with group_by="ticker"
+    yfinance returns MultiIndex columns (ticker, field) even for a single ticker,
+    so we must unwrap `data[ticker]` to expose a flat 'Close' column. Flat columns
+    are only a valid single-ticker frame.
+    """
     try:
-        if batch_len == 1:
-            return data
-        if ticker not in data.columns.get_level_values(0):
+        cols = getattr(data, "columns", None)
+        if cols is not None and getattr(cols, "nlevels", 1) > 1:
+            if ticker in cols.get_level_values(0):
+                return data[ticker]
             return None
-        return data[ticker]
+        return data if batch_len == 1 else None
     except Exception:
         return None
 

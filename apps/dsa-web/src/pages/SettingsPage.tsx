@@ -8,6 +8,7 @@ import {
   AuthSettingsCard,
   ChangePasswordCard,
   IntelligentImport,
+  WatchlistEditor,
   LLMChannelEditor,
   SettingsCategoryNav,
   SettingsAlert,
@@ -376,6 +377,24 @@ const SettingsPage: React.FC = () => {
                     <SettingsAlert title="操作成功" message={desktopActionSuccess} variant="success" />
                   ) : null}
                 </div>
+              </SettingsSectionCard>
+            ) : null}
+            {activeCategory === 'base' ? (
+              <SettingsSectionCard
+                title="自选股 Watchlist"
+                description="添加或删除自选股代码；添加时会通过行情数据校验代码有效性。"
+              >
+                <WatchlistEditor
+                  stockListValue={
+                    (activeItems.find((i) => i.key === 'STOCK_LIST')?.value as string) ?? ''
+                  }
+                  configVersion={configVersion}
+                  maskToken={maskToken}
+                  onSaved={async () => {
+                    await refreshAfterExternalSave(['STOCK_LIST']);
+                  }}
+                  disabled={isSaving || isLoading}
+                />
               </SettingsSectionCard>
             ) : null}
             {activeCategory === 'base' ? (
