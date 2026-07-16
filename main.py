@@ -85,6 +85,17 @@ def _build_changes_section() -> Optional[str]:
     return render_changes_markdown(report)
 
 
+def _build_overlap_section() -> Optional[str]:
+    """Build the High-Conviction Overlap Board, or None if no stock appears in
+    2+ strategies today. Isolated for try/except failure control."""
+    from src.scanner.overlap import build_overlap_board, render_overlap_markdown
+
+    board = build_overlap_board()
+    if board is None or not board.has_any:
+        return None
+    return render_overlap_markdown(board)
+
+
 def _get_active_env_path() -> Path:
     env_file = os.getenv("ENV_FILE")
     if env_file:
@@ -972,6 +983,22 @@ def main() -> int:
                         logger.info("What-Changed section generated → %s", ch_path)
                 except Exception as exc:
                     logger.warning("What-Changed skipped (report unaffected): %s", exc)
+
+                # Prepend the High-Conviction Overlap Board above What-Changed —
+                # the strongest cross-strategy signals lead the email.
+                try:
+                    overlap_md = _build_overlap_section()
+                    if overlap_md:
+                        combined = overlap_md + "\n\n---\n\n" + combined
+                        ov_path = os.path.join(
+                            "output", "scans",
+                            f"overlap_{datetime.now().strftime('%Y%m%d')}.md",
+                        )
+                        with open(ov_path, "w", encoding="utf-8") as f:
+                            f.write(overlap_md)
+                        logger.info("High-Conviction board generated → %s", ov_path)
+                except Exception as exc:
+                    logger.warning("Overlap board skipped (report unaffected): %s", exc)
 
                 if not getattr(args, 'no_notify', False):
                     notifier = NotificationService()
