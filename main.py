@@ -74,6 +74,17 @@ def _build_scorecard_section() -> Optional[str]:
     return render_scorecard_markdown(scorecard)
 
 
+def _build_changes_section() -> Optional[str]:
+    """Build the What-Changed markdown section, or None if there's nothing to
+    compare (fewer than two scan days). Isolated for try/except failure control."""
+    from src.scanner.changes import detect_changes, render_changes_markdown
+
+    report = detect_changes()
+    if report is None or not report.has_any:
+        return None
+    return render_changes_markdown(report)
+
+
 def _get_active_env_path() -> Path:
     env_file = os.getenv("ENV_FILE")
     if env_file:
@@ -945,6 +956,22 @@ def main() -> int:
                         logger.info("Performance scorecard generated → %s", sc_path)
                 except Exception as exc:
                     logger.warning("Scorecard skipped (report unaffected): %s", exc)
+
+                # Prepend "What Changed Since Yesterday" above the scorecard, so
+                # the most time-sensitive info is first. Also failure-isolated.
+                try:
+                    changes_md = _build_changes_section()
+                    if changes_md:
+                        combined = changes_md + "\n\n---\n\n" + combined
+                        ch_path = os.path.join(
+                            "output", "scans",
+                            f"changes_{datetime.now().strftime('%Y%m%d')}.md",
+                        )
+                        with open(ch_path, "w", encoding="utf-8") as f:
+                            f.write(changes_md)
+                        logger.info("What-Changed section generated → %s", ch_path)
+                except Exception as exc:
+                    logger.warning("What-Changed skipped (report unaffected): %s", exc)
 
                 if not getattr(args, 'no_notify', False):
                     notifier = NotificationService()
