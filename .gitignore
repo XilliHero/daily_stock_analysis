@@ -79,3 +79,6 @@ verify_*.py
 static/
 /apps/dsa-desktop/dist/
 /apps/dsa-desktop/node_modules/
+
+# generated scan data (markdown reports, pick JSON, scorecards)
+output/
