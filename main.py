@@ -96,6 +96,17 @@ def _build_overlap_section() -> Optional[str]:
     return render_overlap_markdown(board)
 
 
+def _build_watchlist_section() -> Optional[str]:
+    """Build the Watchlist Spotlight for the personal STOCK_LIST, or None if it's
+    empty / has no data. Isolated for try/except failure control."""
+    from src.scanner.watchlist import build_watchlist, render_watchlist_markdown
+
+    report = build_watchlist()
+    if report is None or not report.has_any:
+        return None
+    return render_watchlist_markdown(report)
+
+
 def _get_active_env_path() -> Path:
     env_file = os.getenv("ENV_FILE")
     if env_file:
@@ -999,6 +1010,22 @@ def main() -> int:
                         logger.info("High-Conviction board generated → %s", ov_path)
                 except Exception as exc:
                     logger.warning("Overlap board skipped (report unaffected): %s", exc)
+
+                # Prepend the Watchlist Spotlight at the very top — the user's own
+                # tracked tickers and alerts are the most personal, lead with them.
+                try:
+                    watchlist_md = _build_watchlist_section()
+                    if watchlist_md:
+                        combined = watchlist_md + "\n\n---\n\n" + combined
+                        wl_path = os.path.join(
+                            "output", "scans",
+                            f"watchlist_{datetime.now().strftime('%Y%m%d')}.md",
+                        )
+                        with open(wl_path, "w", encoding="utf-8") as f:
+                            f.write(watchlist_md)
+                        logger.info("Watchlist spotlight generated → %s", wl_path)
+                except Exception as exc:
+                    logger.warning("Watchlist spotlight skipped (report unaffected): %s", exc)
 
                 if not getattr(args, 'no_notify', False):
                     notifier = NotificationService()
