@@ -31,6 +31,54 @@ HISTORY_DAYS = 40  # fetch a few extra to cover weekends/holidays
 REQUEST_TIMEOUT = 30  # seconds — cap yfinance calls so a throttled batch fails fast
 
 
+def _extract_ticker_df(data, ticker: str, batch_len: int):
+    """Pull one ticker's OHLCV frame out of a (possibly multi-index) yf.download result."""
+    try:
+        if batch_len == 1:
+            return data
+        if ticker not in data.columns.get_level_values(0):
+            return None
+        return data[ticker]
+    except Exception:
+        return None
+
+
+def fetch_price_history(
+    tickers: List[str], batch_size: int = BATCH_SIZE
+) -> Dict[str, "pd.DataFrame"]:
+    """Download daily OHLCV history for many tickers in batches.
+
+    Returns ``{ticker: DataFrame}``. This is the strategy-independent, expensive
+    part of screening (the bulk yfinance load), so multi-strategy scans call it
+    once and share the result across all strategies instead of re-fetching the
+    whole universe per strategy.
+    """
+    history: Dict[str, "pd.DataFrame"] = {}
+    for i in range(0, len(tickers), batch_size):
+        batch = tickers[i:i + batch_size]
+        try:
+            data = yf.download(
+                batch,
+                period=f"{HISTORY_DAYS}d",
+                group_by="ticker",
+                progress=False,
+                threads=True,
+                timeout=REQUEST_TIMEOUT,
+            )
+        except Exception as e:
+            logger.warning("[ScreenerAgent] yf.download failed for batch %d: %s", i, e)
+            continue
+        for ticker in batch:
+            df = _extract_ticker_df(data, ticker, len(batch))
+            if df is not None and not df.empty:
+                history[ticker] = df
+        logger.info(
+            "[ScreenerAgent] fetched prices %d-%d (%d ok)",
+            i, min(i + batch_size, len(tickers)), len(history),
+        )
+    return history
+
+
 @dataclass
 class StockSignals:
     """Screening signals computed for one stock."""
@@ -94,24 +142,35 @@ class ScreenerAgent:
         self.strategy = strategy
         self.criteria = strategy.screening
 
-    def run(self, stocks: List[StockEntry], top_n: int = 50) -> ScreenerResult:
+    def run(
+        self,
+        stocks: List[StockEntry],
+        top_n: int = 50,
+        price_cache: Optional[Dict[str, "pd.DataFrame"]] = None,
+    ) -> ScreenerResult:
         t0 = time.time()
         result = ScreenerResult(total_scanned=len(stocks))
 
         tickers = [s.ticker for s in stocks]
         stock_map = {s.ticker: s for s in stocks}
 
-        all_signals: List[StockSignals] = []
+        # Price history is strategy-independent. When a shared cache is supplied
+        # (multi-strategy scans prefetch it once), reuse it instead of
+        # re-downloading the whole universe for every strategy.
+        if price_cache is None:
+            price_cache = fetch_price_history(tickers)
 
-        for i in range(0, len(tickers), BATCH_SIZE):
-            batch = tickers[i:i + BATCH_SIZE]
-            batch_signals = self._screen_batch(batch, stock_map)
-            all_signals.extend(batch_signals)
-            logger.info(
-                "[ScreenerAgent] batch %d-%d: %d/%d passed",
-                i, min(i + BATCH_SIZE, len(tickers)),
-                len(batch_signals), len(batch),
-            )
+        all_signals: List[StockSignals] = []
+        for ticker in tickers:
+            df = price_cache.get(ticker)
+            if df is None or df.empty or len(df) < 10:
+                continue
+            try:
+                signals = self._compute_signals(ticker, df, stock_map.get(ticker))
+                if signals and signals.signals_triggered > 0:
+                    all_signals.append(signals)
+            except Exception as e:
+                logger.debug("[ScreenerAgent] %s failed: %s", ticker, e)
 
         qualified = [s for s in all_signals if s.signals_triggered >= self.criteria.min_signals]
         qualified.sort(key=lambda s: s.score, reverse=True)
@@ -124,45 +183,6 @@ class ScreenerAgent:
             result.total_scanned, len(qualified), result.total_shortlisted, result.duration_s,
         )
         return result
-
-    def _screen_batch(
-        self, tickers: List[str], stock_map: Dict[str, StockEntry]
-    ) -> List[StockSignals]:
-        results: List[StockSignals] = []
-
-        try:
-            data = yf.download(
-                tickers,
-                period=f"{HISTORY_DAYS}d",
-                group_by="ticker",
-                progress=False,
-                threads=True,
-                timeout=REQUEST_TIMEOUT,
-            )
-        except Exception as e:
-            logger.warning("[ScreenerAgent] yf.download failed: %s", e)
-            return results
-
-        for ticker in tickers:
-            try:
-                if len(tickers) == 1:
-                    df = data
-                else:
-                    if ticker not in data.columns.get_level_values(0):
-                        continue
-                    df = data[ticker]
-
-                if df.empty or len(df) < 10:
-                    continue
-
-                entry = stock_map.get(ticker)
-                signals = self._compute_signals(ticker, df, entry)
-                if signals and signals.signals_triggered > 0:
-                    results.append(signals)
-            except Exception as e:
-                logger.debug("[ScreenerAgent] %s failed: %s", ticker, e)
-
-        return results
 
     def _compute_signals(
         self, ticker: str, df: pd.DataFrame, entry: Optional[StockEntry]

@@ -16,7 +16,7 @@ from typing import List, Optional
 
 from src.scanner.fundamental_agent import FundamentalAgent, FundamentalResult
 from src.scanner.report_agent import ReportAgent, ScanReport
-from src.scanner.screener_agent import ScreenerAgent, ScreenerResult
+from src.scanner.screener_agent import ScreenerAgent, ScreenerResult, fetch_price_history
 from src.scanner.sector_agent import SectorAgent, SectorResult
 from src.scanner.strategy_profiles import StrategyProfile, get_strategy
 from src.scanner.universe_agent import UniverseAgent, UniverseResult
@@ -61,7 +61,7 @@ class MarketScannerPipeline:
         depth = config.fundamental_depth or self.strategy.fundamental_depth
         self.skip_fundamental = depth == "skip"
 
-    def run(self) -> PipelineResult:
+    def run(self, price_cache: Optional[dict] = None) -> PipelineResult:
         t0 = time.time()
         result = PipelineResult(strategy=self.config.strategy_name)
 
@@ -89,9 +89,11 @@ class MarketScannerPipeline:
             "[Pipeline] universe: %d stocks", len(universe_result.stocks),
         )
 
-        # Stage 2: Fast screening
+        # Stage 2: Fast screening (reuses a shared price cache when provided)
         screener = ScreenerAgent(self.strategy)
-        screener_result = screener.run(universe_result.stocks, top_n=self.config.top_n)
+        screener_result = screener.run(
+            universe_result.stocks, top_n=self.config.top_n, price_cache=price_cache
+        )
         result.screener_result = screener_result
 
         if not screener_result.shortlist:
@@ -168,6 +170,7 @@ def run_market_scan(
     include_sectors: Optional[List[str]] = None,
     exclude_sectors: Optional[List[str]] = None,
     top_n: int = 50,
+    price_cache: Optional[dict] = None,
 ) -> PipelineResult:
     """Convenience function to run a single-strategy market scan."""
     config = PipelineConfig(
@@ -179,7 +182,39 @@ def run_market_scan(
         top_n=top_n,
     )
     pipeline = MarketScannerPipeline(config)
-    return pipeline.run()
+    return pipeline.run(price_cache=price_cache)
+
+
+def _prefetch_universe_prices(
+    regions: str,
+    cap_tiers: Optional[List[str]],
+    include_sectors: Optional[List[str]],
+    exclude_sectors: Optional[List[str]],
+) -> Optional[dict]:
+    """Fetch the universe's price history once, to be shared across strategies.
+
+    The universe (and therefore its price history) is identical for every
+    strategy in a multi-scan, so this avoids re-downloading all ~947 stocks four
+    times. Returns None on any failure — callers then fall back to each strategy
+    fetching its own prices, so a prefetch problem never breaks the scan.
+    """
+    try:
+        universe = UniverseAgent(
+            regions=regions,
+            cap_tiers=cap_tiers or ["large", "mid", "small"],
+            include_sectors=include_sectors,
+            exclude_sectors=exclude_sectors,
+        ).run()
+        tickers = [s.ticker for s in universe.stocks]
+        if not tickers:
+            return None
+        cache = fetch_price_history(tickers)
+        logger.info("[MultiScan] prefetched price history for %d/%d tickers",
+                    len(cache), len(tickers))
+        return cache or None
+    except Exception as e:
+        logger.warning("[MultiScan] price prefetch failed; strategies will self-fetch: %s", e)
+        return None
 
 
 def run_multi_strategy_scan(
@@ -190,9 +225,14 @@ def run_multi_strategy_scan(
     exclude_sectors: Optional[List[str]] = None,
     top_n: int = 50,
 ) -> List[PipelineResult]:
-    """Run the scan pipeline for multiple strategies sequentially."""
+    """Run the scan pipeline for multiple strategies sequentially, sharing one
+    price-history fetch across all of them."""
     strategies = strategies or ["value", "growth", "dividend", "recovery"]
     results: List[PipelineResult] = []
+
+    price_cache = _prefetch_universe_prices(
+        regions, cap_tiers, include_sectors, exclude_sectors
+    )
 
     for name in strategies:
         logger.info("[MultiScan] running strategy: %s", name)
@@ -203,6 +243,7 @@ def run_multi_strategy_scan(
             include_sectors=include_sectors,
             exclude_sectors=exclude_sectors,
             top_n=top_n,
+            price_cache=price_cache,
         )
         results.append(result)
 
