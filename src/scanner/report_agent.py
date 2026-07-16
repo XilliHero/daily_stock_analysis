@@ -18,6 +18,7 @@ from typing import Dict, List, Optional
 from src.scanner.fundamental_agent import FundamentalData, FundamentalResult
 from src.scanner.screener_agent import ScreenerResult, StockSignals
 from src.scanner.sector_agent import SectorAnalysis, SectorMetrics, SectorResult
+from src.scanner.trade_levels import compute_trade_levels, format_trade_setup
 from src.scanner.strategy_profiles import StrategyProfile
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,8 @@ class RankedStock:
 
     sector_trend: str = "neutral"
     sector_rank: int = 0
+
+    atr_pct: float = 0.0  # carried from the screener for trade-level computation
 
 
 @dataclass
@@ -151,6 +154,7 @@ class ReportAgent:
                 pe_ratio=(fd.pe_ratio if fd else None) or sig.pe_ratio,
                 pb_ratio=(fd.pb_ratio if fd else None) or sig.pb_ratio,
                 dividend_yield=(fd.dividend_yield if fd else None) or sig.dividend_yield,
+                atr_pct=sig.atr_pct,
             )
 
             if fd:
@@ -261,6 +265,12 @@ class ReportAgent:
                     val_parts.append(f"Rev Growth {rs.revenue_growth:.1f}%")
                 if val_parts:
                     lines.append(f"- **Metrics**: {' | '.join(val_parts)}")
+
+                levels = compute_trade_levels(rs.current_price, rs.atr_pct)
+                if levels is not None:
+                    lines.append(
+                        f"- **Trade setup**: {format_trade_setup(rs.current_price, levels)}"
+                    )
 
                 if rs.flags:
                     lines.append(f"- **Flags**: {', '.join(rs.flags)}")
