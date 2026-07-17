@@ -2,8 +2,8 @@
 # 5-wave impulse + 3-wave corrective pattern analysis for trend and position sizing.
 
 name: wave_theory
-display_name: 波浪理论
-description: 基于艾略特波浪理论的推动浪与调整浪结构，判断当前所处浪型与潜在目标价。
+display_name: Elliott Wave
+description: Based on Elliott Wave impulse and corrective structures, judges the current wave and potential target price.
 category: framework
 core_rules: [1, 2, 3, 4]
 required_tools:

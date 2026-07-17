@@ -2,8 +2,8 @@
 # MA5 crosses above MA10 (or MA10 above MA20) with volume confirmation.
 
 name: ma_golden_cross
-display_name: 均线金叉
-description: 检测均线金叉配合量能确认信号，经典的趋势反转/延续信号。
+display_name: MA Golden Cross
+description: Detects MA golden-cross signals confirmed by volume — a classic trend reversal/continuation signal.
 category: trend
 core_rules: [1, 2, 3]
 required_tools:

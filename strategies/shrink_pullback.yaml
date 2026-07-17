@@ -2,8 +2,8 @@
 # Volume shrinks during pullback to MA5/MA10, then price bounces.
 
 name: shrink_pullback
-display_name: 缩量回踩
-description: 检测缩量回踩均线支撑信号，趋势延续的理想入场点。
+display_name: Low-Volume Pullback
+description: Detects low-volume pullbacks to moving-average support — an ideal trend-continuation entry.
 category: trend
 core_rules: [1, 2, 4]
 required_tools:

@@ -2,8 +2,8 @@
 # Identifies sector leaders during sector rotation cycles.
 
 name: dragon_head
-display_name: 龙头策略
-description: 板块轮动中识别龙头股。适用于板块启动或行业催化剂出现时。
+display_name: Sector Leader
+description: Identifies leading stocks during sector rotation. Best when a sector starts to move or an industry catalyst appears.
 category: trend
 core_rules: [2, 7]
 required_tools:

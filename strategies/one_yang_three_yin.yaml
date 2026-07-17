@@ -2,8 +2,8 @@
 # K-line pattern: bullish → 3 small bearish → bullish. Consolidation end signal.
 
 name: one_yang_three_yin
-display_name: 一阳夹三阴
-description: 检测一阳夹三阴K线整理形态，趋势延续入场信号。
+display_name: One Yang, Three Yin
+description: Detects the one-yang-enclosing-three-yin candlestick consolidation — a trend-continuation entry signal.
 category: pattern
 core_rules: [2, 4]
 required_tools:

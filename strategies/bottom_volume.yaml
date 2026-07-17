@@ -2,8 +2,8 @@
 # After extended decline, price stabilizes and volume spikes. Potential reversal.
 
 name: bottom_volume
-display_name: 底部放量
-description: 检测长期下跌后底部放量信号，潜在趋势反转信号。
+display_name: Bottom Volume
+description: Detects bottom volume-surge signals after a prolonged decline — a potential trend reversal.
 category: reversal
 core_rules: [2, 5]
 required_tools:

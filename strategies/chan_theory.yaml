@@ -2,8 +2,8 @@
 # Based on Zen channel theory: pen, stroke, segment, hub structure analysis.
 
 name: chan_theory
-display_name: 缠论
-description: 基于缠论笔、线段、中枢结构，判断趋势级别、买卖点与背驰信号。
+display_name: Chanlun
+description: Uses Chanlun stroke, segment, and pivot structure to judge trend level, buy/sell points, and divergence signals.
 category: framework
 core_rules: [1, 2, 3, 4]
 required_tools:

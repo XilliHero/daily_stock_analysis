@@ -2,8 +2,8 @@
 # Uses market sentiment, turnover rate and volume pattern to time entries against crowd behavior.
 
 name: emotion_cycle
-display_name: 情绪周期
-description: 基于市场情绪、换手率与量价结构，识别情绪低点（恐慌底）与情绪高点（狂热顶），逆情绪布局。
+display_name: Sentiment Cycle
+description: Uses market sentiment, turnover, and price-volume structure to spot sentiment lows (panic bottoms) and highs (euphoric tops) for contrarian positioning.
 category: framework
 core_rules: [1, 2, 3, 5]
 required_tools:

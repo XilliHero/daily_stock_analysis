@@ -2,8 +2,8 @@
 # Buy at box support, sell at box resistance, profit from range-bound oscillation.
 
 name: box_oscillation
-display_name: 箱体震荡
-description: 识别价格箱体区间，在箱底买入、箱顶减仓，适用于横盘震荡行情。
+display_name: Range Oscillation
+description: Identifies price range boxes: buy at the box bottom, trim at the top; suited to sideways, range-bound markets.
 category: framework
 core_rules: [1, 2, 3]
 required_tools:
