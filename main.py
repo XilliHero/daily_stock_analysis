@@ -107,6 +107,25 @@ def _build_watchlist_section() -> Optional[str]:
     return render_watchlist_markdown(report)
 
 
+def _build_alert_digest(health_report=None) -> Optional[str]:
+    """Build the concise real-time alert digest from watchlist alerts, high-conviction
+    overlaps, and any health warning. None when nothing is worth pushing."""
+    from src.scanner.alerts import build_alert_digest
+    from src.scanner.overlap import build_overlap_board
+    from src.scanner.watchlist import build_watchlist
+
+    health_line = None
+    if health_report is not None:
+        from src.scanner.health import health_summary_line
+        health_line = health_summary_line(health_report)
+
+    return build_alert_digest(
+        watchlist_report=build_watchlist(),
+        overlap_board=build_overlap_board(),
+        health_line=health_line,
+    )
+
+
 def _get_active_env_path() -> Path:
     env_file = os.getenv("ENV_FILE")
     if env_file:
@@ -938,6 +957,16 @@ def main() -> int:
                 top_n=scan_top_n,
             )
 
+            # Assess scan health (missing strategy / flat / abnormally low scores).
+            health_report = None
+            try:
+                from src.scanner.health import assess_scan_health
+                health_report = assess_scan_health(results)
+                if health_report.degraded:
+                    logger.warning("Scan health degraded: %s", health_report.issues)
+            except Exception as exc:
+                logger.warning("Health assessment skipped: %s", exc)
+
             all_reports: list[str] = []
             for res in results:
                 if res.report and res.report.markdown:
@@ -1026,6 +1055,38 @@ def main() -> int:
                         logger.info("Watchlist spotlight generated → %s", wl_path)
                 except Exception as exc:
                     logger.warning("Watchlist spotlight skipped (report unaffected): %s", exc)
+
+                # Prepend a Scan Health Warning at the very top when the scan looks
+                # degraded, so a bad-data report is never read at face value.
+                try:
+                    from src.scanner.health import render_health_warning
+                    warn_md = render_health_warning(health_report) if health_report else None
+                    if warn_md:
+                        combined = warn_md + "\n\n---\n\n" + combined
+                except Exception as exc:
+                    logger.warning("Health warning skipped (report unaffected): %s", exc)
+
+                # Build the real-time alert digest (actionable TL;DR) and push it to
+                # every configured channel. Failure-isolated; not sent on --no-notify.
+                try:
+                    alert_digest = _build_alert_digest(health_report)
+                    if alert_digest:
+                        ad_path = os.path.join(
+                            "output", "scans",
+                            f"alerts_{datetime.now().strftime('%Y%m%d')}.md",
+                        )
+                        with open(ad_path, "w", encoding="utf-8") as f:
+                            f.write(alert_digest)
+                        logger.info("Alert digest built → %s", ad_path)
+                        if not getattr(args, 'no_notify', False):
+                            alert_notifier = NotificationService()
+                            if alert_notifier.is_available():
+                                alert_notifier.send(alert_digest)
+                                logger.info("Alert digest pushed to configured channels.")
+                            else:
+                                logger.info("Alert digest built but no channel configured; skipped.")
+                except Exception as exc:
+                    logger.warning("Alert digest skipped (report unaffected): %s", exc)
 
                 if not getattr(args, 'no_notify', False):
                     notifier = NotificationService()
