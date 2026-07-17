@@ -79,7 +79,7 @@ function renderFieldControl(
           onChange={onChange}
           options={normalizeSelectOptions(schema.options)}
           disabled={disabled || !schema.isEditable}
-          placeholder="请选择"
+          placeholder="Select"
         />
       );
   }
@@ -95,7 +95,7 @@ function renderFieldControl(
           disabled={disabled || !schema?.isEditable}
           onChange={(event) => onChange(event.target.checked ? 'true' : 'false')}
         />
-        <span className="text-sm text-secondary-text">{checked ? '已启用' : '未启用'}</span>
+        <span className="text-sm text-secondary-text">{checked ? 'Enabled' : 'Disabled'}</span>
       </label>
     );
   }
@@ -138,7 +138,7 @@ function renderFieldControl(
                   onChange(serializeMultiValues(nextValues.length ? nextValues : ['']));
                 }}
               >
-                删除
+                Delete
               </Button>
             </div>
           ))}
@@ -152,7 +152,7 @@ function renderFieldControl(
               disabled={disabled || !schema?.isEditable}
               onClick={() => onChange(serializeMultiValues([...values, '']))}
             >
-              添加 Key
+              Add key
             </Button>
           </div>
         </div>
@@ -217,12 +217,12 @@ export const SettingsField: React.FC<SettingsFieldProps> = ({
         </label>
         {schema?.isSensitive ? (
           <Badge variant="history" size="sm">
-            敏感
+            Sensitive
           </Badge>
         ) : null}
         {!schema?.isEditable ? (
           <Badge variant="default" size="sm">
-            只读
+            Read-only
           </Badge>
         ) : null}
       </div>
@@ -249,8 +249,8 @@ export const SettingsField: React.FC<SettingsFieldProps> = ({
 
       {schema?.isSensitive ? (
         <p className="mt-3 text-[11px] leading-5 text-secondary-text">
-          敏感内容默认隐藏，可点击眼睛图标查看明文。
-          {isMultiValue ? ' 支持添加多个输入框进行增删。' : ''}
+          Sensitive content is hidden by default; click the eye icon to reveal it.
+          {isMultiValue ? 'Supports adding multiple input fields.' : ''}
         </p>
       ) : null}
 

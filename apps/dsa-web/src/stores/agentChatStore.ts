@@ -180,7 +180,7 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
     set({ abortController: ac });
 
     const streamSessionId = payload.session_id || storeSessionId;
-    const skillName = meta?.skillName ?? '通用';
+    const skillName = meta?.skillName ?? 'General';
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -231,10 +231,10 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
             const parsedStreamError = getParsedApiError(
               doneEvent.error ||
                 doneEvent.content ||
-                '大模型调用出错，请检查 API Key 配置',
+                'The LLM call failed. Check your API key configuration',
             );
             throw createParsedApiError({
-              title: '问股执行失败',
+              title: 'Ask request failed',
               message: parsedStreamError.message,
               rawMessage: parsedStreamError.rawMessage,
               status: parsedStreamError.status,
@@ -246,7 +246,7 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
         }
 
         if (event.type === 'error') {
-          throw getParsedApiError(event.message || '分析出错');
+          throw getParsedApiError(event.message || 'Analysis error');
         }
 
         currentProgressSteps.push(event);
@@ -292,7 +292,7 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
             {
               id: (Date.now() + 1).toString(),
               role: 'assistant',
-              content: finalContent || '（无内容）',
+              content: finalContent || '(empty)',
               skill: payload.skills?.[0],
               skillName,
               thinkingSteps: [...currentProgressSteps],

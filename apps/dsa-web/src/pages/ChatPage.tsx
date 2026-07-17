@@ -27,12 +27,12 @@ import { getReportText } from '../utils/reportLanguage';
 
 // Quick question examples shown on empty state
 const QUICK_QUESTIONS = [
-  { label: '用缠论分析茅台', skill: 'chan_theory' },
-  { label: '波浪理论看宁德时代', skill: 'wave_theory' },
-  { label: '分析比亚迪趋势', skill: 'bull_trend' },
-  { label: '箱体震荡技能看中芯国际', skill: 'box_oscillation' },
-  { label: '分析腾讯 hk00700', skill: 'bull_trend' },
-  { label: '用情绪周期分析东方财富', skill: 'emotion_cycle' },
+  { label: 'Analyze Moutai with Chanlun', skill: 'chan_theory' },
+  { label: 'Elliott Wave on CATL', skill: 'wave_theory' },
+  { label: 'Analyze BYD\'s trend', skill: 'bull_trend' },
+  { label: 'Range-trading skill on SMIC', skill: 'box_oscillation' },
+  { label: 'Analyze Tencent hk00700', skill: 'bull_trend' },
+  { label: 'Analyze East Money by sentiment cycle', skill: 'emotion_cycle' },
 ];
 
 const ChatPage: React.FC = () => {
@@ -82,7 +82,7 @@ const ChatPage: React.FC = () => {
 
   // Set page title
   useEffect(() => {
-    document.title = '问股 - DSA';
+    document.title = 'Ask - DSA';
   }, []);
 
   useEffect(() => () => {
@@ -256,7 +256,7 @@ const ChatPage: React.FC = () => {
       const usedSkill = overrideSkill || selectedSkill;
       const usedSkillName =
         skills.find((s) => s.id === usedSkill)?.name ||
-        (usedSkill ? usedSkill : '通用');
+        (usedSkill ? usedSkill : 'General');
 
       const payload = {
         message: msgText,
@@ -329,7 +329,7 @@ const ChatPage: React.FC = () => {
   };
 
   const downloadMessageAsMarkdown = useCallback((msg: Message) => {
-    const heading = msg.role === 'user' ? '# 用户消息' : `# AI 回复${msg.skillName ? ` · ${msg.skillName}` : ''}`;
+    const heading = msg.role === 'user' ? '# User message' : `# AI reply${msg.skillName ?` · ${msg.skillName}` : ''}`;
     const content = [heading, '', msg.content].join('\n');
     const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -343,16 +343,16 @@ const ChatPage: React.FC = () => {
   }, []);
 
   const getCurrentStage = (steps: ProgressStep[]): string => {
-    if (steps.length === 0) return '正在连接...';
+    if (steps.length === 0) return 'Connecting...';
     const last = steps[steps.length - 1];
-    if (last.type === 'thinking') return last.message || 'AI 正在思考...';
+    if (last.type === 'thinking') return last.message || 'The AI is thinking...';
     if (last.type === 'tool_start')
       return `${last.display_name || last.tool}...`;
     if (last.type === 'tool_done')
-      return `${last.display_name || last.tool} 完成`;
+      return `${last.display_name || last.tool} done`;
     if (last.type === 'generating')
-      return last.message || '正在生成最终分析...';
-    return '处理中...';
+      return last.message || 'Generating final analysis...';
+    return 'Processing...';
   };
 
   const renderThinkingBlock = (msg: Message) => {
@@ -363,7 +363,7 @@ const ChatPage: React.FC = () => {
       (sum, s) => sum + (s.duration || 0),
       0,
     );
-    const summary = `${toolSteps.length} 个工具调用 · ${totalDuration.toFixed(1)}s`;
+    const summary = `${toolSteps.length} tool calls · ${totalDuration.toFixed(1)}s`;
 
     return (
       <button
@@ -384,7 +384,7 @@ const ChatPage: React.FC = () => {
           />
         </svg>
         <span className="flex items-center gap-1.5">
-          <span className="opacity-60">思考过程</span>
+          <span className="opacity-60">Reasoning</span>
           <span className="text-muted-text/50">·</span>
           <span className="opacity-50">{summary}</span>
         </span>
@@ -399,7 +399,7 @@ const ChatPage: React.FC = () => {
         let iconClass = 'chat-progress-dot-muted';
         let text = '';
         if (step.type === 'thinking') {
-          text = step.message || `第 ${step.step} 步：思考`;
+          text = step.message || `Step ${step.step}: thinking`;
           statusClass = 'chat-progress-item-thinking';
           iconClass = 'chat-progress-dot-thinking';
         } else if (step.type === 'tool_start') {
@@ -411,7 +411,7 @@ const ChatPage: React.FC = () => {
           statusClass = step.success ? 'chat-progress-item-success' : 'chat-progress-item-danger';
           iconClass = step.success ? 'chat-progress-dot-success' : 'chat-progress-dot-danger';
         } else if (step.type === 'generating') {
-          text = step.message || '生成分析';
+          text = step.message || 'Generate analysis';
           statusClass = 'chat-progress-item-generating';
           iconClass = 'chat-progress-dot-generating';
         }
@@ -435,12 +435,12 @@ const ChatPage: React.FC = () => {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          历史对话
+          Past conversations
         </h2>
         <button
           onClick={handleStartNewChat}
           className="rounded-lg p-1.5 text-muted-text transition-all hover:bg-white/10 hover:text-foreground"
-          aria-label="开启新对话"
+          aria-label="Start a new conversation"
         >
           <svg
             className="w-4 h-4"
@@ -462,14 +462,14 @@ const ChatPage: React.FC = () => {
           <DashboardStateBlock
             loading
             compact
-            title="加载对话中..."
+            title="Loading conversation..."
             className="rounded-2xl border border-dashed border-border/50 bg-surface/30"
           />
         ) : sessions.length === 0 ? (
           <DashboardStateBlock
             compact
-            title="暂无历史对话"
-            description="开始提问后，这里会保留会话记录。"
+            title="No past conversations"
+            description="Once you start asking, the conversation is kept here."
             className="rounded-2xl border border-dashed border-border/50 bg-surface/30"
           />
         ) : (
@@ -480,7 +480,7 @@ const ChatPage: React.FC = () => {
                   type="button"
                   onClick={() => handleSwitchSession(s.session_id)}
                   className={`session-item ${s.session_id === sessionId ? 'active' : ''}`}
-                  aria-label={`切换到对话 ${s.title}`}
+                  aria-label={`Switch to conversation ${s.title}`}
                   aria-current={s.session_id === sessionId ? 'page' : undefined}
                 >
                   <div className="indicator" />
@@ -488,7 +488,7 @@ const ChatPage: React.FC = () => {
                     <span className="title">{s.title}</span>
                     <div className="mt-0.5 flex items-center gap-2">
                       <span className="meta">
-                        {s.message_count} 条对话
+                        {s.message_count} messages
                       </span>
                       {s.last_active && (
                         <>
@@ -507,7 +507,7 @@ const ChatPage: React.FC = () => {
                   onClick={() => {
                     setDeleteConfirmId(s.session_id);
                   }}
-                  aria-label={`删除对话 ${s.title}`}
+                  aria-label={`Delete conversation ${s.title}`}
                 >
                   <svg
                     className="w-3.5 h-3.5"
@@ -560,10 +560,10 @@ const ChatPage: React.FC = () => {
       {/* Delete confirmation dialog */}
       <ConfirmDialog
         isOpen={Boolean(deleteConfirmId)}
-        title="删除对话"
-        message="删除后，该对话将不可恢复，确认删除吗？"
-        confirmText="删除"
-        cancelText="取消"
+        title="Delete conversation"
+        message="This conversation can't be recovered after deletion. Delete it?"
+        confirmText="Delete"
+        cancelText="Cancel"
         isDanger
         onConfirm={confirmDelete}
         onCancel={() => setDeleteConfirmId(null)}
@@ -577,7 +577,7 @@ const ChatPage: React.FC = () => {
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-hover transition-colors text-secondary-text hover:text-foreground"
-                aria-label="历史对话"
+                aria-label="Past conversations"
               >
                 <svg
                   className="w-5 h-5"
@@ -606,17 +606,17 @@ const ChatPage: React.FC = () => {
                   d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                 />
               </svg>
-              问股
+              Ask
             </h1>
             {messages.length > 0 && (
               <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
-                <Tooltip content="导出会话为 Markdown 文件">
+                <Tooltip content="Export the conversation as a Markdown file">
                   <span className="inline-flex">
                     <Button
                       variant="action-primary"
                       size="sm"
                       onClick={() => downloadSession(messages)}
-                      aria-label="导出会话为 Markdown 文件"
+                      aria-label="Export the conversation as a Markdown file"
                     >
                       <svg
                         className="w-4 h-4"
@@ -631,11 +631,11 @@ const ChatPage: React.FC = () => {
                           d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                         />
                       </svg>
-                      导出会话
+                      Export conversation
                     </Button>
                   </span>
                 </Tooltip>
-                <Tooltip content="发送到已配置的通知机器人/邮箱">
+                <Tooltip content="Send to the configured notification bot / email">
                   <span className="inline-flex">
                     <Button
                       variant="action-primary"
@@ -648,18 +648,18 @@ const ChatPage: React.FC = () => {
                         try {
                           const content = formatSessionAsMarkdown(messages);
                           await agentApi.sendChat(content);
-                          showSendFeedback({ type: 'success', message: '已发送到通知渠道' }, 3000);
+                          showSendFeedback({ type: 'success', message: 'Sent to the notification channel' }, 3000);
                         } catch (err) {
                           const parsed = getParsedApiError(err);
                           showSendFeedback({
                             type: 'error',
-                            message: parsed.message || '发送失败',
+                            message: parsed.message || 'Send failed',
                           }, 5000);
                         } finally {
                           setSending(false);
                         }
                       }}
-                      aria-label="发送到已配置的通知机器人/邮箱"
+                      aria-label="Send to the configured notification bot / email"
                     >
                       {sending ? (
                         <svg
@@ -696,7 +696,7 @@ const ChatPage: React.FC = () => {
                           />
                         </svg>
                       )}
-                      发送
+                      Send
                     </Button>
                   </span>
                 </Tooltip>
@@ -704,12 +704,12 @@ const ChatPage: React.FC = () => {
             )}
           </div>
           <p className="text-secondary-text text-sm">
-            向 AI 询问个股分析，获取基于技能视角的交易建议与实时决策报告。
+            Ask the AI for single-stock analysis and get skill-based trade suggestions and live decision reports.
           </p>
           {sendToast ? (
             <InlineAlert
               variant={sendToast.type === 'success' ? 'success' : 'danger'}
-              title={sendToast.type === 'success' ? '发送成功' : '发送失败'}
+              title={sendToast.type === 'success' ? 'Sent' : 'Send failed'}
               message={sendToast.message}
               className="max-w-md rounded-xl px-3 py-2 text-xs shadow-none"
             />
@@ -728,8 +728,8 @@ const ChatPage: React.FC = () => {
             {messages.length === 0 && !loading ? (
               <div className="flex h-full items-center justify-center">
                 <EmptyState
-                  title="开始问股"
-                  description="输入「分析 600519」或「茅台现在能买吗」，AI 将调用实时数据工具为您生成决策报告。"
+                  title="Start asking"
+                  description="Type 'Analyze 600519' or 'Is Moutai a buy now', and the AI will call live-data tools to generate a decision report for you."
                   className="max-w-2xl border-dashed bg-card/55"
                   icon={(
                     <svg
@@ -783,7 +783,7 @@ const ChatPage: React.FC = () => {
                   >
                     {msg.role === 'assistant' && msg.skillName && (
                       <div className="mb-2">
-                        <Badge variant="info" className="chat-skill-badge shadow-none" aria-label={`技能 ${msg.skillName}`}>
+                        <Badge variant="info" className="chat-skill-badge shadow-none" aria-label={`Skill ${msg.skillName}`}>
                           <svg
                             className="w-3 h-3"
                             fill="none"
@@ -821,9 +821,9 @@ const ChatPage: React.FC = () => {
                             type="button"
                             onClick={() => downloadMessageAsMarkdown(msg)}
                             className="chat-copy-btn"
-                            aria-label="导出此条消息为 Markdown"
+                            aria-label="Export this message as Markdown"
                           >
-                            导出
+                            Export
                           </button>
                         </div>
                         <div className="chat-prose pr-20 sm:pr-24">
@@ -880,7 +880,7 @@ const ChatPage: React.FC = () => {
                   requestScrollToBottom('smooth');
                   scrollToBottom('smooth');
                 }}
-                aria-label="查看最新消息"
+                aria-label="View latest message"
               >
                 <svg
                   className="h-3.5 w-3.5"
@@ -895,7 +895,7 @@ const ChatPage: React.FC = () => {
                     d="M19 14l-7 7m0 0l-7-7m7 7V3"
                   />
                 </svg>
-                有新消息
+                New message
               </button>
             </div>
           )}
@@ -907,15 +907,15 @@ const ChatPage: React.FC = () => {
               {isFollowUpContextLoading ? (
                 <InlineAlert
                   variant="info"
-                  title="追问上下文加载中"
-                  message="正在加载历史分析上下文；现在可直接发送追问。"
+                  title="Loading follow-up context"
+                  message="Loading prior analysis context; you can send a follow-up now."
                   className="rounded-xl px-3 py-2 text-xs shadow-none"
                 />
               ) : null}
             {skills.length > 0 && (
               <div className="flex flex-wrap items-start gap-x-5 gap-y-2">
                 <span className="text-xs text-muted-text font-medium uppercase tracking-wider flex-shrink-0 mt-1">
-                  策略
+                  Strategy
                 </span>
                 <label className="flex items-center gap-1.5 text-sm cursor-pointer group mt-0.5">
                   <input
@@ -929,7 +929,7 @@ const ChatPage: React.FC = () => {
                   <span
                     className={`transition-colors text-sm ${selectedSkill === '' ? 'text-foreground font-medium' : 'text-secondary-text group-hover:text-foreground'}`}
                   >
-                    通用分析
+                    General analysis
                   </span>
                 </label>
                 {skills.map((s) => (
@@ -968,7 +968,7 @@ const ChatPage: React.FC = () => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="例如：分析 600519 / 茅台现在适合买入吗？ (Enter 发送, Shift+Enter 换行)"
+                  placeholder="e.g. Analyze 600519 / Is Moutai a buy right now? (Enter to send, Shift+Enter for newline)"
                   disabled={loading}
                   rows={1}
                   className="input-surface input-focus-glow flex-1 min-h-[44px] max-h-[200px] rounded-xl border bg-transparent px-4 py-2.5 text-sm transition-all focus:outline-none resize-none disabled:cursor-not-allowed disabled:opacity-60"
@@ -986,7 +986,7 @@ const ChatPage: React.FC = () => {
                   isLoading={loading}
                   className="btn-primary flex-shrink-0"
                 >
-                  发送
+                  Send
                 </Button>
               </div>
             </div>

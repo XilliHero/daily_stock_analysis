@@ -23,7 +23,7 @@ export interface StockIndexItem {
   pinyinFull?: string;
   /** Pinyin abbreviation: gzmt */
   pinyinAbbr?: string;
-  /** Aliases: ["茅台"] */
+  /** Aliases: ["Moutai"] */
   aliases?: string[];
   /** Market */
   market: Market;

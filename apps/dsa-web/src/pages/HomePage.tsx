@@ -53,7 +53,7 @@ const HomePage: React.FC = () => {
   } = useHomeDashboardState();
 
   useEffect(() => {
-    document.title = '每日选股分析 - DSA';
+    document.title = 'Daily Stock Analysis - DSA';
   }, []);
   const reportLanguage = normalizeReportLanguage(selectedReport?.meta.reportLanguage);
   const reportText = getReportText(reportLanguage);
@@ -152,7 +152,7 @@ const HomePage: React.FC = () => {
             <button
               onClick={() => setSidebarOpen(true)}
               className="md:hidden -ml-1 flex-shrink-0 rounded-lg p-1.5 text-secondary-text transition-colors hover:bg-hover hover:text-foreground"
-              aria-label="历史记录"
+              aria-label="History"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -165,7 +165,7 @@ const HomePage: React.FC = () => {
                 onSubmit={(stockCode, stockName, selectionSource) => {
                   handleSubmitAnalysis(stockCode, stockName, selectionSource);
                 }}
-                placeholder="输入股票代码或名称，如 600519、贵州茅台、AAPL"
+                placeholder="Enter a stock code or name, e.g. 600519, Kweichow Moutai, AAPL"
                 disabled={isAnalyzing}
                 className={inputError ? 'border-danger/50' : undefined}
               />
@@ -177,7 +177,7 @@ const HomePage: React.FC = () => {
                 onChange={(e) => setNotify(e.target.checked)}
                 className="h-3.5 w-3.5 rounded border-border accent-primary"
               />
-              推送通知
+              Push notification
             </label>
             <button
               type="button"
@@ -191,10 +191,10 @@ const HomePage: React.FC = () => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  分析中
+                  Analyzing
                 </>
               ) : (
-                '分析'
+                'Analyze'
               )}
             </button>
           </div>
@@ -205,7 +205,7 @@ const HomePage: React.FC = () => {
             {inputError ? (
               <InlineAlert
                 variant="danger"
-                title="输入有误"
+                title="Invalid input"
                 message={inputError}
                 className="rounded-xl px-3 py-2 text-xs shadow-none"
               />
@@ -213,7 +213,7 @@ const HomePage: React.FC = () => {
             {!inputError && duplicateError ? (
               <InlineAlert
                 variant="warning"
-                title="任务已存在"
+                title="Task already exists"
                 message={duplicateError}
                 className="rounded-xl px-3 py-2 text-xs shadow-none"
               />
@@ -248,7 +248,7 @@ const HomePage: React.FC = () => {
             ) : null}
             {isLoadingReport ? (
               <div className="flex h-full flex-col items-center justify-center">
-                <DashboardStateBlock title="加载报告中..." loading />
+                <DashboardStateBlock title="Loading report..." loading />
               </div>
             ) : selectedReport ? (
               <div className="max-w-4xl space-y-4 pb-8">
@@ -262,7 +262,7 @@ const HomePage: React.FC = () => {
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
-                    追问 AI
+                    Ask a follow-up
                   </Button>
                   <Button
                     variant="home-action-ai"
@@ -281,8 +281,8 @@ const HomePage: React.FC = () => {
             ) : (
               <div className="flex h-full items-center justify-center">
                 <EmptyState
-                  title="开始分析"
-                  description="输入股票代码进行分析，或从左侧选择历史报告查看。"
+                  title="Start analysis"
+                  description="Enter a stock code to analyze, or pick a past report from the left."
                   className="max-w-xl border-dashed"
                   icon={(
                     <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,14 +308,14 @@ const HomePage: React.FC = () => {
 
       <ConfirmDialog
         isOpen={showDeleteConfirm}
-        title="删除历史记录"
+        title="Delete history record"
         message={
           selectedHistoryIds.length === 1
-            ? '确认删除这条历史记录吗？删除后将不可恢复。'
-            : `确认删除选中的 ${selectedHistoryIds.length} 条历史记录吗？删除后将不可恢复。`
+            ? 'Delete this history record? This cannot be undone.'
+            : `Delete the ${selectedHistoryIds.length} selected history records? This cannot be undone.`
         }
-        confirmText={isDeletingHistory ? '删除中...' : '确认删除'}
-        cancelText="取消"
+        confirmText={isDeletingHistory ? 'Deleting...' : 'Confirm delete'}
+        cancelText="Cancel"
         isDanger={true}
         onConfirm={handleDeleteSelectedHistory}
         onCancel={() => setShowDeleteConfirm(false)}
