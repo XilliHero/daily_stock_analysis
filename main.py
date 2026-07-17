@@ -107,6 +107,31 @@ def _build_watchlist_section() -> Optional[str]:
     return render_watchlist_markdown(report)
 
 
+def _build_deepdive_section() -> Optional[str]:
+    """Run Team B's AI deep-dive on the top DEEPDIVE_LIMIT conviction picks (from the
+    Overlap Board) and render the section. None if disabled or nothing qualifies.
+
+    Costs a few Gemini calls per pick, so it's capped by the DEEPDIVE_LIMIT env var
+    (default 2; set 0 to disable). Isolated so a caller can try/except it.
+    """
+    limit = int(os.getenv("DEEPDIVE_LIMIT", "2") or "0")
+    if limit <= 0:
+        return None
+
+    from src.scanner.deepdive import (
+        render_deepdive_markdown,
+        run_deep_dives,
+        select_deepdive_tickers,
+    )
+    from src.scanner.overlap import build_overlap_board
+
+    picks = select_deepdive_tickers(build_overlap_board(), limit=limit)
+    if not picks:
+        return None
+    logger.info("Deep-diving %d top conviction pick(s) via Team B…", len(picks))
+    return render_deepdive_markdown(run_deep_dives(picks))
+
+
 def _build_alert_digest(health_report=None) -> Optional[str]:
     """Build the concise real-time alert digest from watchlist alerts, high-conviction
     overlaps, and any health warning. None when nothing is worth pushing."""
@@ -1023,6 +1048,23 @@ def main() -> int:
                         logger.info("What-Changed section generated → %s", ch_path)
                 except Exception as exc:
                     logger.warning("What-Changed skipped (report unaffected): %s", exc)
+
+                # Prepend the AI Deep Dive of the top conviction picks (Team B),
+                # so it sits directly under the Overlap board it analyzes. Makes
+                # a few Gemini calls; failure-isolated and gated by DEEPDIVE_LIMIT.
+                try:
+                    deepdive_md = _build_deepdive_section()
+                    if deepdive_md:
+                        combined = deepdive_md + "\n\n---\n\n" + combined
+                        dd_path = os.path.join(
+                            "output", "scans",
+                            f"deepdive_{datetime.now().strftime('%Y%m%d')}.md",
+                        )
+                        with open(dd_path, "w", encoding="utf-8") as f:
+                            f.write(deepdive_md)
+                        logger.info("Deep Dive section generated → %s", dd_path)
+                except Exception as exc:
+                    logger.warning("Deep Dive skipped (report unaffected): %s", exc)
 
                 # Prepend the High-Conviction Overlap Board above What-Changed —
                 # the strongest cross-strategy signals lead the email.
