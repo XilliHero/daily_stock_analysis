@@ -122,6 +122,11 @@ class YfinanceFetcher(BaseFetcher):
             logger.debug(f"转换港股代码: {stock_code} -> {hk_code}.HK")
             return f"{hk_code}.HK"
 
+        # Canadian tickers (Toronto .TO, TSX Venture .V) are already Yahoo-native
+        # — pass them through untouched instead of mangling to .SZ.
+        if code.endswith(('.TO', '.V')):
+            return code
+
         # 已经包含后缀的情况
         if '.SS' in code or '.SZ' in code or '.HK' in code or '.BJ' in code:
             return code
@@ -639,9 +644,10 @@ class YfinanceFetcher(BaseFetcher):
                 index_name=index_name,
             )
 
-        # 仅处理美股股票
-        if not self._is_us_stock(stock_code):
-            logger.debug(f"[Yfinance] {stock_code} 不是美股，跳过")
+        # Yahoo-native individual stocks: US plus Canada (.TO / .V) — both work
+        # directly via yf.Ticker below.
+        if not self._is_us_stock(stock_code) and not stock_code.strip().upper().endswith((".TO", ".V")):
+            logger.debug(f"[Yfinance] {stock_code} 不是美股/加股，跳过")
             return None
 
         try:

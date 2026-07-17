@@ -144,6 +144,13 @@ def _is_hk_market(code: str) -> bool:
     return False
 
 
+def _is_canada_market(code: str) -> bool:
+    """Canadian equities — Toronto (.TO) and TSX Venture (.V). Yahoo-native, so
+    they route through the Yfinance fast path just like US stocks."""
+    normalized = (code or "").strip().upper()
+    return normalized.endswith((".TO", ".V"))
+
+
 def _is_etf_code(code: str) -> bool:
     """判定 A 股 ETF 基金代码（保守规则）。"""
     normalized = normalize_stock_code(code)
@@ -943,11 +950,14 @@ class DataFetcherManager:
         #   - 美股指数:       始终 YFinance 为首选（Longbridge 不提供指数K线）
         is_us_index = is_us_index_code(stock_code)
         is_us = is_us_index or is_us_stock_code(stock_code)
-        is_hk = (not is_us) and _is_hk_market(stock_code)
+        is_ca = (not is_us) and _is_canada_market(stock_code)
+        is_hk = (not is_us) and (not is_ca) and _is_hk_market(stock_code)
 
-        # 美股（含美股指数）使用 Longbridge/YFinance 特殊路由；港股走下方通用数据源循环
-        if is_us:
-            prefer_lb = self._longbridge_preferred() and not is_us_index
+        # US (incl. indices) and Canada use the Yfinance fast path (Yahoo handles
+        # both natively); HK falls through to the general data-source loop below.
+        if is_us or is_ca:
+            # Longbridge doesn't cover TSX — always prefer Yfinance for Canada.
+            prefer_lb = (not is_ca) and self._longbridge_preferred() and not is_us_index
             source_order = (
                 ["LongbridgeFetcher", "YfinanceFetcher"]
                 if prefer_lb
@@ -1164,14 +1174,17 @@ class DataFetcherManager:
         # ----------------------------------------------------------
         is_us_index = is_us_index_code(stock_code)
         is_us = is_us_index or _is_us_code(stock_code)
-        is_hk = (not is_us) and _is_hk_market(stock_code)
+        is_ca = (not is_us) and _is_canada_market(stock_code)
+        is_hk = (not is_us) and (not is_ca) and _is_hk_market(stock_code)
 
-        if is_us or is_hk:
+        if is_us or is_hk or is_ca:
             prefer_lb = self._longbridge_preferred() and not is_us_index
-            if is_us:
-                primary_src = "LongbridgeFetcher" if prefer_lb else "YfinanceFetcher"
-                secondary_src = "YfinanceFetcher" if prefer_lb else "LongbridgeFetcher"
-                market_label = "美股指数" if is_us_index else "美股"
+            if is_us or is_ca:
+                # Longbridge doesn't cover TSX — always prefer Yfinance for Canada.
+                use_lb_first = prefer_lb and not is_ca
+                primary_src = "LongbridgeFetcher" if use_lb_first else "YfinanceFetcher"
+                secondary_src = "YfinanceFetcher" if use_lb_first else "LongbridgeFetcher"
+                market_label = "加股" if is_ca else ("美股指数" if is_us_index else "美股")
                 primary_kw: dict = {}
                 secondary_kw: dict = {}
             else:
