@@ -5,7 +5,7 @@ import { SidebarNav } from '../SidebarNav';
 
 const mockLogout = vi.fn().mockResolvedValue(undefined);
 const mockThemeToggle = vi.fn(({ collapsed }: { collapsed?: boolean }) => (
-  <button type="button">{collapsed ? '切换主题(折叠)' : '切换主题'}</button>
+  <button type="button">{collapsed ? '切换主题(折叠)' : 'Toggle theme'}</button>
 ));
 
 const completionBadgeState = { value: true };
@@ -37,7 +37,7 @@ describe('SidebarNav', () => {
     );
 
     expect(screen.getByTestId('chat-completion-badge')).toBeInTheDocument();
-    expect(screen.getByLabelText('问股有新消息')).toBeInTheDocument();
+    expect(screen.getByLabelText('New message in Ask')).toBeInTheDocument();
 
     completionBadgeState.value = false;
     rerender(
@@ -69,10 +69,10 @@ describe('SidebarNav', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '退出' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
 
-    expect(await screen.findByRole('heading', { name: '退出登录' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '确认退出' }));
+    expect(await screen.findByRole('heading', { name: 'Log out' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm logout' }));
     expect(mockLogout).toHaveBeenCalled();
   });
 });

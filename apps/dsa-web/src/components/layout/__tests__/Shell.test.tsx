@@ -46,10 +46,10 @@ describe('Shell', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getAllByRole('button', { name: '切换主题' }).length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: '问股' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Toggle theme' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: 'Ask' })).toBeInTheDocument();
     expect(screen.getByTestId('chat-completion-badge')).toBeInTheDocument();
-    const logoutButton = screen.getByRole('button', { name: '退出' });
+    const logoutButton = screen.getByRole('button', { name: 'Exit' });
     expect(logoutButton).toBeInTheDocument();
     expect(logoutButton).toHaveClass('cursor-pointer');
   });
@@ -65,9 +65,9 @@ describe('Shell', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: '切换主题' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Toggle theme' })[0]);
 
-    expect(await screen.findByRole('menu', { name: '主题模式' })).toBeInTheDocument();
+    expect(await screen.findByRole('menu', { name: 'Theme mode' })).toBeInTheDocument();
   });
 
   it('shows a confirmation dialog before logout', async () => {
@@ -81,10 +81,10 @@ describe('Shell', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '退出' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
 
-    expect(await screen.findByRole('heading', { name: '退出登录' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '确认退出' }));
+    expect(await screen.findByRole('heading', { name: 'Log out' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm logout' }));
     expect(mockLogout).toHaveBeenCalled();
   });
 });

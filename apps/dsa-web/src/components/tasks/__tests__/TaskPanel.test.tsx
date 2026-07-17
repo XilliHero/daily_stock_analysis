@@ -32,12 +32,12 @@ describe('TaskPanel', () => {
       />,
     );
 
-    expect(screen.getByText('分析任务')).toBeInTheDocument();
-    expect(screen.getByText('1 进行中')).toBeInTheDocument();
-    expect(screen.getByText('1 等待中')).toBeInTheDocument();
+    expect(screen.getByText('Analysis task')).toBeInTheDocument();
+    expect(screen.getByText('1 in progress')).toBeInTheDocument();
+    expect(screen.getByText('1 pending')).toBeInTheDocument();
     expect(screen.getByText('贵州茅台')).toBeInTheDocument();
     expect(screen.getByText('AAPL')).toBeInTheDocument();
-    expect(screen.getByLabelText('任务状态：分析中')).toBeInTheDocument();
+    expect(screen.getByLabelText('Task status: Analyzing')).toBeInTheDocument();
     expect(container.querySelector('.home-panel-card')).toBeTruthy();
     expect(container.querySelector('.home-subpanel')).toBeTruthy();
   });

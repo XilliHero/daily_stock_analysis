@@ -22,7 +22,7 @@ const items: HistoryItem[] = [
     stockCode: '600519',
     stockName: '贵州茅台',
     sentimentScore: 82,
-    operationAdvice: '买入',
+    operationAdvice: 'Buy',
     createdAt: '2026-03-15T08:00:00Z',
   },
 ];
@@ -41,9 +41,9 @@ describe('HistoryList', () => {
   it('shows the empty state copy when no history exists', () => {
     const { container } = render(<HistoryList {...baseProps} items={[]} />);
 
-    expect(screen.getByText('暂无历史分析记录')).toBeInTheDocument();
-    expect(screen.getByText('完成首次分析后，这里会保留最近结果。')).toBeInTheDocument();
-    expect(screen.getByText('历史分析')).toBeInTheDocument();
+    expect(screen.getByText('No history yet')).toBeInTheDocument();
+    expect(screen.getByText('After your first analysis, recent results are kept here.')).toBeInTheDocument();
+    expect(screen.getByText('Past analyses')).toBeInTheDocument();
     expect(container.querySelector('.glass-card')).toBeTruthy();
   });
 
@@ -62,8 +62,8 @@ describe('HistoryList', () => {
       />,
     );
 
-    expect(screen.getByText('已选 1')).toBeInTheDocument();
-    expect(screen.getByText('买入 82')).toBeInTheDocument();
+    expect(screen.getByText('Selected 1')).toBeInTheDocument();
+    expect(screen.getByText('Buy 82')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /贵州茅台/i }));
     expect(onItemClick).toHaveBeenCalledWith(1);
@@ -83,7 +83,7 @@ describe('HistoryList', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('全选当前'));
+    fireEvent.click(screen.getByText('Select all'));
 
     expect(onToggleSelectAll).toHaveBeenCalledTimes(1);
   });
@@ -91,7 +91,7 @@ describe('HistoryList', () => {
   it('disables delete when nothing is selected', () => {
     render(<HistoryList {...baseProps} items={items} />);
 
-    expect(screen.getByRole('button', { name: '删除' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
   });
 
   it('truncates long stock names with trailing dot', () => {

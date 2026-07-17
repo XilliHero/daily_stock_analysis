@@ -39,7 +39,7 @@ describe('SettingsField', () => {
       />
     );
 
-    expect(screen.getByText('敏感')).toBeInTheDocument();
+    expect(screen.getByText('Sensitive')).toBeInTheDocument();
     expect(screen.getByText('API Key 必填')).toBeInTheDocument();
 
     const input = screen.getByLabelText('OpenAI API Key');
@@ -79,7 +79,7 @@ describe('SettingsField', () => {
       />
     );
 
-    expect(screen.getAllByRole('button', { name: '显示内容' })).toHaveLength(2);
-    expect(screen.getAllByRole('button', { name: '删除' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Show content' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(2);
   });
 });

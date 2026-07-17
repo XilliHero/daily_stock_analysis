@@ -47,7 +47,7 @@ const historyItem = {
   stockCode: '600519',
   stockName: '贵州茅台',
   sentimentScore: 82,
-  operationAdvice: '买入',
+  operationAdvice: 'Buy',
   createdAt: '2026-03-18T08:00:00Z',
 };
 
@@ -101,7 +101,7 @@ describe('HomePage', () => {
     expect(dashboard.className).toContain('lg:h-[calc(100vh-2rem)]');
     expect(dashboard.firstElementChild?.className).toContain('min-h-0');
     expect(dashboard.querySelector('.flex-1.flex.min-h-0.overflow-hidden')).toBeTruthy();
-    expect(screen.getByPlaceholderText('输入股票代码或名称，如 600519、贵州茅台、AAPL')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Enter a stock code or name, e.g. 600519, Kweichow Moutai, AAPL')).toBeInTheDocument();
     expect(await screen.findByText('趋势维持强势')).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
@@ -124,10 +124,10 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('开始分析')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '开始分析', level: 3 })).toBeInTheDocument();
-    expect(screen.getByText('输入股票代码进行分析，或从左侧选择历史报告查看。')).toBeInTheDocument();
-    expect(screen.getByText('暂无历史分析记录')).toBeInTheDocument();
+    expect(await screen.findByText('Start analysis')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Start analysis', level: 3 })).toBeInTheDocument();
+    expect(screen.getByText('Enter a stock code to analyze, or pick a past report from the left.')).toBeInTheDocument();
+    expect(screen.getByText('No history yet')).toBeInTheDocument();
   });
 
   it('surfaces duplicate task warnings from dashboard submission', async () => {
@@ -147,14 +147,14 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    const input = await screen.findByPlaceholderText('输入股票代码或名称，如 600519、贵州茅台、AAPL');
+    const input = await screen.findByPlaceholderText('Enter a stock code or name, e.g. 600519, Kweichow Moutai, AAPL');
     fireEvent.change(input, { target: { value: '600519' } });
-    fireEvent.click(screen.getByRole('button', { name: '分析' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/股票 600519 正在分析中/)).toBeInTheDocument();
+      expect(screen.getByText(/600519 is being analyzed/)).toBeInTheDocument();
     });
-    expect(screen.getByText(/股票 600519 正在分析中/).closest('[role="alert"]')).toBeInTheDocument();
+    expect(screen.getByText(/600519 is being analyzed/).closest('[role="alert"]')).toBeInTheDocument();
   });
 
   it('navigates to chat with report context when asking a follow-up question', async () => {
@@ -172,7 +172,7 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    const followUpButton = await screen.findByRole('button', { name: '追问 AI' });
+    const followUpButton = await screen.findByRole('button', { name: 'Ask a follow-up' });
     fireEvent.click(followUpButton);
 
     expect(navigateMock).toHaveBeenCalledWith(
@@ -202,13 +202,13 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: '删除' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     expect(
-      await screen.findByText('确认删除这条历史记录吗？删除后将不可恢复。'),
+      await screen.findByText('Delete this history record? This cannot be undone.'),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete' }));
 
     await waitFor(() => {
       expect(historyApi.deleteRecords).toHaveBeenCalledWith([1]);
@@ -229,7 +229,7 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    const trigger = await screen.findByRole('button', { name: '历史记录' });
+    const trigger = await screen.findByRole('button', { name: 'History' });
     fireEvent.click(trigger);
 
     expect(container.querySelector('.page-drawer-overlay')).toBeTruthy();
@@ -271,7 +271,7 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('分析任务')).toBeInTheDocument();
+    expect(await screen.findByText('Analysis task')).toBeInTheDocument();
     expect(screen.getByText('正在抓取最新行情')).toBeInTheDocument();
   });
 });

@@ -29,11 +29,11 @@ describe('ReportNews', () => {
     const { container } = render(<ReportNews recordId={1} />);
 
     expect(await screen.findByText('茅台发布最新经营数据')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '跳转' })).toHaveAttribute('href', 'https://example.com/news');
+    expect(screen.getByRole('link', { name: 'Go' })).toHaveAttribute('href', 'https://example.com/news');
     expect(container.querySelector('.home-panel-card')).toBeTruthy();
     expect(container.querySelector('.home-subpanel')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: '刷新' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 
     await waitFor(() => {
       expect(historyApi.getNews).toHaveBeenCalledTimes(2);
@@ -48,8 +48,8 @@ describe('ReportNews', () => {
 
     render(<ReportNews recordId={1} />);
 
-    expect(await screen.findByText('暂无相关资讯')).toBeInTheDocument();
-    expect(screen.getByText('可稍后刷新以获取最新资讯。')).toBeInTheDocument();
+    expect(await screen.findByText('No related news')).toBeInTheDocument();
+    expect(screen.getByText('Refresh later for the latest news.')).toBeInTheDocument();
   });
 
   it('localizes the empty state description for english reports', async () => {
@@ -82,7 +82,7 @@ describe('ReportNews', () => {
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '重试' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
     expect(await screen.findByText('重试成功')).toBeInTheDocument();
   });

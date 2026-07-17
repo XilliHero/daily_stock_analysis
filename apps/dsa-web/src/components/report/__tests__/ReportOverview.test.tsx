@@ -38,14 +38,14 @@ describe('ReportOverview', () => {
       />,
     );
 
-    expect(screen.getByText('关联板块')).toBeInTheDocument();
+    expect(screen.getByText('Related sectors')).toBeInTheDocument();
     expect(screen.getByText('白酒')).toBeInTheDocument();
     expect(screen.getByText('行业')).toBeInTheDocument();
-    expect(screen.getByText('领涨')).toBeInTheDocument();
+    expect(screen.getByText('Top gainers')).toBeInTheDocument();
     expect(screen.getByText('+2.31%')).toBeInTheDocument();
-    expect(screen.getByText('领跌')).toBeInTheDocument();
+    expect(screen.getByText('Top losers')).toBeInTheDocument();
     expect(screen.getByText('-1.20%')).toBeInTheDocument();
-    expect(screen.queryByText('中性')).not.toBeInTheDocument();
+    expect(screen.queryByText('Neutral')).not.toBeInTheDocument();
   });
 
   it('shows board list when rankings are unavailable', () => {
@@ -59,17 +59,17 @@ describe('ReportOverview', () => {
       />,
     );
 
-    expect(screen.getByText('关联板块')).toBeInTheDocument();
+    expect(screen.getByText('Related sectors')).toBeInTheDocument();
     expect(screen.getByText('半导体')).toBeInTheDocument();
-    expect(screen.queryByText('中性')).not.toBeInTheDocument();
-    expect(screen.queryByText('领涨')).not.toBeInTheDocument();
-    expect(screen.queryByText('领跌')).not.toBeInTheDocument();
+    expect(screen.queryByText('Neutral')).not.toBeInTheDocument();
+    expect(screen.queryByText('Top gainers')).not.toBeInTheDocument();
+    expect(screen.queryByText('Top losers')).not.toBeInTheDocument();
   });
 
   it('hides related boards section when no boards are available', () => {
     render(<ReportOverview meta={baseMeta} summary={baseSummary} details={{ belongBoards: [] }} />);
 
-    expect(screen.queryByText('关联板块')).not.toBeInTheDocument();
+    expect(screen.queryByText('Related sectors')).not.toBeInTheDocument();
   });
 
   it('fails open on malformed ranking payloads', () => {
@@ -87,9 +87,9 @@ describe('ReportOverview', () => {
       />,
     );
 
-    expect(screen.getByText('关联板块')).toBeInTheDocument();
+    expect(screen.getByText('Related sectors')).toBeInTheDocument();
     expect(screen.getByText('白酒')).toBeInTheDocument();
-    expect(screen.getByText('领跌')).toBeInTheDocument();
+    expect(screen.getByText('Top losers')).toBeInTheDocument();
     expect(screen.getByText('-2.50%')).toBeInTheDocument();
   });
 });

@@ -65,13 +65,14 @@ vi.mock('../../utils/constants', async () => {
 });
 
 vi.mock('../../components/settings', () => ({
-  AuthSettingsCard: () => <div>认证与登录保护</div>,
-  ChangePasswordCard: () => <div>修改密码</div>,
+  AuthSettingsCard: () => <div>Authentication and login protection</div>,
+  ChangePasswordCard: () => <div>Change password</div>,
   IntelligentImport: ({ onMerged }: { onMerged: (value: string) => void }) => (
     <button type="button" onClick={() => onMerged('SZ000001,SZ000002')}>
       merge stock list
     </button>
   ),
+  WatchlistEditor: () => <div>watchlist editor</div>,
   LLMChannelEditor: ({
     onSaved,
   }: {
@@ -131,7 +132,7 @@ vi.mock('../../components/settings', () => ({
 }));
 
 const baseCategories = [
-  { category: 'system', title: 'System', description: '系统设置', displayOrder: 1, fields: [] },
+  { category: 'system', title: 'System', description: 'Settings', displayOrder: 1, fields: [] },
   { category: 'base', title: 'Base', description: '基础配置', displayOrder: 2, fields: [] },
   { category: 'ai_model', title: 'AI', description: '模型配置', displayOrder: 3, fields: [] },
   { category: 'agent', title: 'Agent', description: 'Agent 配置', displayOrder: 4, fields: [] },
@@ -316,16 +317,16 @@ describe('SettingsPage', () => {
   it('renders category navigation and auth settings modules', async () => {
     render(<SettingsPage />);
 
-    expect(await screen.findByRole('heading', { name: '系统设置' })).toBeInTheDocument();
-    expect(screen.getByText('认证与登录保护')).toBeInTheDocument();
-    expect(screen.getByText('修改密码')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByText('Authentication and login protection')).toBeInTheDocument();
+    expect(screen.getByText('Change password')).toBeInTheDocument();
     expect(load).toHaveBeenCalled();
   });
 
   it('renders web build info in system settings', async () => {
     render(<SettingsPage />);
 
-    expect(await screen.findByRole('heading', { name: '版本信息' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Version info' })).toBeInTheDocument();
     expect(screen.getByText('3.11.0')).toBeInTheDocument();
     expect(screen.getByText('build-20260329-021530Z')).toBeInTheDocument();
     expect(screen.getByText('2026-03-29T02:15:30.000Z')).toBeInTheDocument();
@@ -355,8 +356,8 @@ describe('SettingsPage', () => {
 
     render(<SettingsPage />);
 
-    expect(await screen.findByRole('heading', { name: '版本信息' })).toBeInTheDocument();
-    expect(screen.getByText(/当前 package\.json 仍为占位版本 0\.0\.0/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Version info' })).toBeInTheDocument();
+    expect(screen.getByText(/package\.json is still the placeholder version 0\.0\.0/)).toBeInTheDocument();
     expect(screen.getAllByText('build-20260329-021530Z')).toHaveLength(2);
   });
 
@@ -368,7 +369,7 @@ describe('SettingsPage', () => {
     // Clear the initial load call from useEffect
     vi.clearAllMocks();
 
-    fireEvent.click(screen.getByRole('button', { name: '重置' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
     // Reset should call resetDraft and NOT call load
     expect(resetDraft).toHaveBeenCalledTimes(1);
@@ -461,7 +462,7 @@ describe('SettingsPage', () => {
     vi.clearAllMocks();
 
     // Click reset button
-    fireEvent.click(screen.getByRole('button', { name: '重置' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
     // Verify semantic: reset should only discard local changes
     // It should NOT trigger a network load
@@ -495,8 +496,8 @@ describe('SettingsPage', () => {
   it('does not render desktop env backup card outside desktop runtime', () => {
     render(<SettingsPage />);
 
-    expect(screen.queryByRole('heading', { name: '配置备份' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '导出 .env' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Config backup' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Export .env' })).not.toBeInTheDocument();
   });
 
   it('renders desktop env backup actions in desktop runtime and exports saved env', async () => {
@@ -506,7 +507,7 @@ describe('SettingsPage', () => {
 
     vi.clearAllMocks();
 
-    fireEvent.click(screen.getByRole('button', { name: '导出 .env' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Export .env' }));
 
     await waitFor(() => expect(exportDesktopEnv).toHaveBeenCalledTimes(1));
     expect(mockedAnchorClick).toHaveBeenCalledTimes(1);
@@ -521,9 +522,9 @@ describe('SettingsPage', () => {
 
     vi.clearAllMocks();
 
-    fireEvent.click(screen.getByRole('button', { name: '导入 .env' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Import .env' }));
 
-    expect(await screen.findByText('导入会覆盖当前草稿')).toBeInTheDocument();
+    expect(await screen.findByText('Importing overwrites the current draft')).toBeInTheDocument();
     expect(importDesktopEnv).not.toHaveBeenCalled();
   });
 
@@ -567,8 +568,8 @@ describe('SettingsPage', () => {
 
     await waitFor(() => expect(importDesktopEnv).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
-    expect(screen.getByText('配置已导入但刷新失败')).toBeInTheDocument();
-    expect(screen.getByText('备份已导入，但重新加载配置失败，请手动重载页面。')).toBeInTheDocument();
-    expect(screen.queryByText('已导入 .env 备份并重新加载配置。')).not.toBeInTheDocument();
+    expect(screen.getByText('Config imported but refresh failed')).toBeInTheDocument();
+    expect(screen.getByText('The backup was imported, but reloading config failed. Please reload the page manually.')).toBeInTheDocument();
+    expect(screen.queryByText('.env backup imported and config reloaded.')).not.toBeInTheDocument();
   });
 });

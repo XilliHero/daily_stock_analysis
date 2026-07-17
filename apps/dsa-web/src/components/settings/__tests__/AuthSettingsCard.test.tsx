@@ -35,15 +35,15 @@ describe('AuthSettingsCard', () => {
     render(<AuthSettingsCard />);
 
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('设置管理员密码'), { target: { value: 'passwd6' } });
-    fireEvent.change(screen.getByLabelText('确认新密码'), { target: { value: 'passwd6' } });
-    fireEvent.click(screen.getByRole('button', { name: '开启认证' }));
+    fireEvent.change(screen.getByLabelText('Set admin password'), { target: { value: 'passwd6' } });
+    fireEvent.change(screen.getByLabelText('Confirm new password'), { target: { value: 'passwd6' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enable auth' }));
 
     await waitFor(() => {
       expect(updateSettings).toHaveBeenCalledWith(true, 'passwd6', 'passwd6', undefined);
     });
     expect(refreshStatus).toHaveBeenCalled();
-    expect(await screen.findByText('认证设置已更新')).toBeInTheDocument();
+    expect(await screen.findByText('Auth settings updated')).toBeInTheDocument();
   });
 
   it('allows disabling auth without current password when the session is still valid', async () => {
@@ -58,13 +58,13 @@ describe('AuthSettingsCard', () => {
     render(<AuthSettingsCard />);
 
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: '关闭认证' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Disable auth' }));
 
     await waitFor(() => {
       expect(updateSettings).toHaveBeenCalledWith(false, undefined, undefined, undefined);
     });
     expect(refreshStatus).toHaveBeenCalled();
-    expect(await screen.findByText('认证已关闭')).toBeInTheDocument();
+    expect(await screen.findByText('Auth disabled')).toBeInTheDocument();
   });
 
   it('shows only current password when re-enabling with a retained password', () => {
@@ -78,9 +78,9 @@ describe('AuthSettingsCard', () => {
 
     fireEvent.click(screen.getByRole('checkbox'));
 
-    expect(screen.getByLabelText('当前管理员密码')).toBeInTheDocument();
-    expect(screen.queryByLabelText('设置管理员密码')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('确认新密码')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Current admin password')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Set admin password')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Confirm new password')).not.toBeInTheDocument();
   });
 
   it('does not show new password fields while auth is already enabled', () => {
@@ -92,17 +92,17 @@ describe('AuthSettingsCard', () => {
 
     render(<AuthSettingsCard />);
 
-    expect(screen.queryByLabelText('设置管理员密码')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('确认新密码')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Set admin password')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Confirm new password')).not.toBeInTheDocument();
   });
 
   it('blocks initial enable when the new password is missing', async () => {
     render(<AuthSettingsCard />);
 
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: '开启认证' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enable auth' }));
 
-    expect(await screen.findByText('设置新密码是必填项')).toBeInTheDocument();
+    expect(await screen.findByText('A new password is required')).toBeInTheDocument();
     expect(updateSettings).not.toHaveBeenCalled();
   });
 });
