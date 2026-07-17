@@ -7,8 +7,8 @@ interface JsonViewerProps {
 }
 
 /**
- * JSON 结构化展示组件
- * 支持语法高亮和折叠
+ * JSON structured viewer component
+ * Supports syntax highlighting and folding
  */
 export const JsonViewer: React.FC<JsonViewerProps> = ({
   data,
@@ -31,25 +31,25 @@ export const JsonViewer: React.FC<JsonViewerProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // 简单的语法高亮
+  // Simple syntax highlighting
   const highlightJson = (json: string): React.ReactNode => {
     return json.split('\n').map((line, index) => {
-      // 高亮 key
+      // Highlight key
       let highlighted = line.replace(
         /"([^"]+)":/g,
         '<span class="text-cyan-400">"$1"</span>:'
       );
-      // 高亮字符串值
+      // Highlight string values
       highlighted = highlighted.replace(
         /: "([^"]*)"/g,
         ': <span class="text-emerald-400">"$1"</span>'
       );
-      // 高亮数字
+      // Highlight numbers
       highlighted = highlighted.replace(
         /: (-?\d+\.?\d*)/g,
         ': <span class="text-amber-400">$1</span>'
       );
-      // 高亮布尔值和 null
+      // Highlight booleans and null
       highlighted = highlighted.replace(
         /: (true|false|null)/g,
         ': <span class="text-purple-400">$1</span>'
@@ -67,7 +67,7 @@ export const JsonViewer: React.FC<JsonViewerProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      {/* 复制按钮 */}
+      {/* Copy button */}
       <button
         onClick={handleCopy}
         className="absolute top-2 right-2 px-2 py-1 text-xs rounded
@@ -77,7 +77,7 @@ export const JsonViewer: React.FC<JsonViewerProps> = ({
         {copied ? 'Copied!' : 'Copy'}
       </button>
 
-      {/* JSON 内容 */}
+      {/* JSON content */}
       <div
         className="bg-slate-900/80 rounded-lg p-4 overflow-auto custom-scrollbar
           border border-slate-700/50 font-mono text-sm text-gray-300"

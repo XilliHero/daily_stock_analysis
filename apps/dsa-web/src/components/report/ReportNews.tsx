@@ -9,13 +9,13 @@ import type { NewsIntelItem, ReportLanguage } from '../../types/analysis';
 import { getReportText, normalizeReportLanguage } from '../../utils/reportLanguage';
 
 interface ReportNewsProps {
-  recordId?: number;  // 分析历史记录主键 ID
+  recordId?: number;  // Analysis history record primary-key ID
   limit?: number;
   language?: ReportLanguage;
 }
 
 /**
- * 资讯区组件 - 终端风格
+ * News component — terminal style
  */
 export const ReportNews: React.FC<ReportNewsProps> = ({ recordId, limit = 8, language = 'zh' }) => {
   const reportLanguage = normalizeReportLanguage(language);

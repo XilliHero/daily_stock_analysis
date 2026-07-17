@@ -4,14 +4,14 @@ import { DashboardPanelHeader } from '../dashboard';
 import type { TaskInfo } from '../../types/analysis';
 
 /**
- * 任务项组件属性
+ * Task item props
  */
 interface TaskItemProps {
   task: TaskInfo;
 }
 
 /**
- * 单个任务项
+ * A single task item
  */
 const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
   const isPending = task.status === 'pending';
@@ -23,7 +23,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
 
   return (
     <div className="home-subpanel flex items-center gap-3 px-3 py-2.5">
-      {/* 状态图标 */}
+      {/* Status icon */}
       <div className="shrink-0">
         {isProcessing ? (
           <StatusDot tone="info" pulse className="h-2.5 w-2.5" aria-label="Task in progress" />
@@ -32,7 +32,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
         ) : null}
       </div>
 
-      {/* 任务信息 */}
+      {/* Task info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-foreground truncate">
@@ -60,7 +60,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
         </div>
       </div>
 
-      {/* 状态标签 */}
+      {/* Status label */}
       <div className="flex-shrink-0">
         <Badge
           variant={statusVariant}
@@ -76,22 +76,22 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
 };
 
 /**
- * 任务面板属性
+ * Task panel props
  */
 interface TaskPanelProps {
-  /** 任务列表 */
+  /** Task list */
   tasks: TaskInfo[];
-  /** 是否显示 */
+  /** Whether to show */
   visible?: boolean;
-  /** 标题 */
+  /** Title */
   title?: string;
-  /** 自定义类名 */
+  /** Custom class name */
   className?: string;
 }
 
 /**
- * 任务面板组件
- * 显示进行中的分析任务列表
+ * Task panel component
+ * Shows the list of in-progress analysis tasks
  */
 export const TaskPanel: React.FC<TaskPanelProps> = ({
   tasks,
@@ -99,12 +99,12 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   title = 'Analysis task',
   className = '',
 }) => {
-  // 筛选活跃任务（pending 和 processing）
+  // Filter active tasks (pending and processing)
   const activeTasks = tasks.filter(
     (t) => t.status === 'pending' || t.status === 'processing'
   );
 
-  // 无任务或不可见时不渲染
+  // Don't render when there are no tasks or it's hidden
   if (!visible || activeTasks.length === 0) {
     return null;
   }

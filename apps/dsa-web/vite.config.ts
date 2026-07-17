@@ -32,8 +32,32 @@ export default defineConfig({
     },
   },
   build: {
-    // 打包输出到项目根目录的 static 文件夹
+    // Output to the project-root static/ folder served by the backend.
     outDir: path.resolve(__dirname, '../../static'),
     emptyOutDir: true,
+    // Split heavy vendors into their own chunks so the main bundle stays small.
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('recharts') || id.includes('/d3-')) return 'charts'
+          if (
+            id.includes('react-markdown') ||
+            id.includes('remark') ||
+            id.includes('micromark') ||
+            id.includes('mdast') ||
+            id.includes('unist') ||
+            id.includes('hast') ||
+            id.includes('remove-markdown')
+          )
+            return 'markdown'
+          if (id.includes('motion') || id.includes('framer')) return 'motion'
+          if (id.includes('react-router')) return 'router'
+          if (id.includes('/react') || id.includes('/scheduler') || id.includes('react-dom'))
+            return 'react-vendor'
+          return 'vendor'
+        },
+      },
+    },
   },
 })
