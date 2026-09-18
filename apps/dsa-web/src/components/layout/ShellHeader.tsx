@@ -12,6 +12,7 @@ type ShellHeaderProps = {
 const TITLES: Record<string, { title: string; description: string }> = {
   '/': { title: 'Home', description: 'Stock analysis and report workbench' },
   '/chat': { title: 'Ask', description: 'Multi-turn strategy Q&A and conversation history' },
+  '/plan': { title: 'Plan', description: 'Your personalized whole-portfolio plan' },
   '/backtest': { title: 'Backtest', description: 'Backtest tasks and results' },
   '/settings': { title: 'Settings', description: 'System config, models, and auth management' },
 };
