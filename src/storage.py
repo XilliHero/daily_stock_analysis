@@ -595,6 +595,19 @@ class PortfolioFxRate(Base):
     )
 
 
+class InvestorProfileRecord(Base):
+    """Advisor investor profile + locked target allocation (one row per owner)."""
+
+    __tablename__ = 'investor_profiles'
+
+    owner_id = Column(String(64), primary_key=True)
+    profile_json = Column(Text, nullable=False)
+    target_json = Column(Text, nullable=False)
+    locked = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 class ConversationMessage(Base):
     """
     Agent 对话历史记录表
