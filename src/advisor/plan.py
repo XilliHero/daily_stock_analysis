@@ -31,6 +31,7 @@ class Plan:
     target: Dict[str, float]
     actions: List[Action] = field(default_factory=list)
     rationale: str = ""
+    engine: str = "deterministic"   # "ai" when the LLM refined candidate selection
     generated_at: str = field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
 
 
@@ -43,6 +44,11 @@ def _default_repo():
     return InvestorProfileRepository()
 
 
+def _default_select(candidates, profile, equity_budget, max_position_pct):
+    from src.advisor.select import select_candidates_with_llm
+    return select_candidates_with_llm(candidates, profile, equity_budget, max_position_pct)
+
+
 def generate_plan(owner_id: str = DEFAULT_OWNER_ID,
                   repo=None,
                   portfolio_service=None,
@@ -50,6 +56,8 @@ def generate_plan(owner_id: str = DEFAULT_OWNER_ID,
                   watchlist_provider: Optional[Callable] = None,
                   verdict_provider: Optional[Callable] = None,
                   candidate_limit: int = 8,
+                  smart: bool = False,
+                  select_fn: Optional[Callable] = None,
                   save: bool = True) -> Plan:
     repo = repo or _default_repo()
     loaded = repo.load(owner_id)
@@ -63,11 +71,26 @@ def generate_plan(owner_id: str = DEFAULT_OWNER_ID,
     gap = compute_gap(current, target)
     candidates = fetch_candidates(limit=candidate_limit, board_provider=board_provider,
                                   watchlist_provider=watchlist_provider, verdict_provider=verdict_provider)
-    actions = size_positions(gap, candidates, current, target)
 
-    rationale = _rationale(current, target, actions)
+    # Smart path: the LLM only reorders/filters candidates + writes prose. Numbers
+    # stay in size_positions. Any failure or empty result falls back to deterministic.
+    engine = "deterministic"
+    llm_rationale = None
+    if smart and candidates:
+        equity_budget = max(gap.class_delta.get("equity", 0.0), 0.0)
+        selector = select_fn or _default_select
+        try:
+            picked = selector(candidates, profile, equity_budget, target.max_position_pct)
+        except Exception:
+            picked = None
+        if picked:
+            candidates, llm_rationale = picked
+            engine = "ai"
+
+    actions = size_positions(gap, candidates, current, target)
+    rationale = llm_rationale or _rationale(current, target, actions)
     plan = Plan(mode=current.mode, base=round(current.base, 2), target=dict(target.weights),
-                actions=actions, rationale=rationale)
+                actions=actions, rationale=rationale, engine=engine)
 
     if save:
         _save_markdown(plan)
@@ -90,7 +113,8 @@ def _fmt(amount: float) -> str:
 def render_markdown(plan: Plan) -> str:
     lines = [
         "## 📋 Your Investment Plan",
-        f"_{plan.mode.title()} mode · base {_fmt(plan.base)} · {plan.generated_at}_",
+        f"_{plan.mode.title()} mode · base {_fmt(plan.base)} · "
+        f"{'AI-refined' if plan.engine == 'ai' else 'deterministic'} · {plan.generated_at}_",
         "",
         "**Target allocation:** " + ", ".join(
             f"{k.replace('_', ' ').title()} {v:.0%}" for k, v in plan.target.items()),
