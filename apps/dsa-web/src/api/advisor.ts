@@ -34,6 +34,7 @@ export interface AdvisorPlan {
   rationale: string;
   markdown: string;
   generated_at: string;
+  engine: string;
 }
 
 export const advisorApi = {
@@ -53,8 +54,8 @@ export const advisorApi = {
     const res = await apiClient.post<{ target: AdvisorTarget }>('/api/v1/advisor/suggest');
     return res.data.target;
   },
-  async generatePlan(): Promise<AdvisorPlan> {
-    const res = await apiClient.post<AdvisorPlan>('/api/v1/advisor/plan');
+  async generatePlan(smart = true): Promise<AdvisorPlan> {
+    const res = await apiClient.post<AdvisorPlan>(`/api/v1/advisor/plan?smart=${smart}`);
     return res.data;
   },
 };

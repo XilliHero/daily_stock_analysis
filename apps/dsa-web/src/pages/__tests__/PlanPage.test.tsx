@@ -18,7 +18,7 @@ describe('PlanPage', () => {
     (advisorApi.getProfile as any).mockResolvedValue(baseProfile);
     (advisorApi.generatePlan as any).mockResolvedValue({
       mode: 'deploy', base: 1000, target: { equity: 1 }, rationale: 'Deploying your cash.',
-      generated_at: '2026-09-18T10:00:00', markdown: '## Plan', actions: [
+      generated_at: '2026-09-18T10:00:00', markdown: '## Plan', engine: 'deterministic', actions: [
         { side: 'buy', asset_class: 'equity', symbol: 'INGR', amount: 150, reason: 'fills equity target' },
       ],
     });
@@ -26,6 +26,19 @@ describe('PlanPage', () => {
     await waitFor(() => expect(screen.getByText(/Investment Plan/i)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /generate plan/i }));
     await waitFor(() => expect(screen.getByText(/INGR/)).toBeInTheDocument());
+  });
+
+  it('passes the AI toggle to generatePlan and shows the engine', async () => {
+    (advisorApi.getProfile as any).mockResolvedValue(baseProfile);
+    (advisorApi.generatePlan as any).mockResolvedValue({
+      mode: 'deploy', base: 1000, target: { equity: 1 }, rationale: 'r', engine: 'ai',
+      generated_at: 't', markdown: '#', actions: [],
+    });
+    render(<PlanPage />);
+    await waitFor(() => expect(screen.getByText(/Investment Plan/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /generate plan/i }));
+    await waitFor(() => expect(advisorApi.generatePlan).toHaveBeenCalledWith(true));
+    await waitFor(() => expect(screen.getByText(/AI-refined/i)).toBeInTheDocument());
   });
 
   it('prompts to create a profile when none exists', async () => {

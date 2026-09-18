@@ -24,6 +24,7 @@ export default function PlanPage() {
   const [plan, setPlan] = useState<AdvisorPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useAI, setUseAI] = useState(true);
 
   useEffect(() => {
     advisorApi.getProfile().then((p) => {
@@ -55,7 +56,7 @@ export default function PlanPage() {
     setBusy(true);
     setError(null);
     try {
-      setPlan(await advisorApi.generatePlan());
+      setPlan(await advisorApi.generatePlan(useAI));
     } catch {
       setError('Lock your target allocation and save first, then generate.');
     } finally {
@@ -128,16 +129,23 @@ export default function PlanPage() {
         <button onClick={save} disabled={busy}>Save</button>
       </section>
 
-      <button className="rounded-lg bg-primary-gradient px-4 py-2 text-white disabled:opacity-50"
-              onClick={generate} disabled={busy || !locked}>
-        Generate plan
-      </button>
+      <div className="flex items-center gap-3">
+        <button className="rounded-lg bg-primary-gradient px-4 py-2 text-white disabled:opacity-50"
+                onClick={generate} disabled={busy || !locked}>
+          Generate plan
+        </button>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={useAI} onChange={(e) => setUseAI(e.target.checked)} />
+          Refine with AI
+        </label>
+      </div>
       {error && <p role="alert" className="text-[hsl(var(--destructive))]">{error}</p>}
 
       {plan && (
         <section className="space-y-3">
           <h2 className="text-lg font-medium">
-            Plan · {plan.mode} mode · base ${plan.base.toLocaleString()}
+            Plan · {plan.mode} mode · base ${plan.base.toLocaleString()} ·{' '}
+            {plan.engine === 'ai' ? 'AI-refined' : 'Deterministic'}
           </h2>
           <p>{plan.rationale}</p>
           <ul className="space-y-1">
