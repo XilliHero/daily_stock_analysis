@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { advisorApi, AdvisorProfile, AdvisorPlan } from '../api/advisor';
+import { advisorApi } from '../api/advisor';
+import type { AdvisorProfile, AdvisorPlan } from '../api/advisor';
 
 const EMPTY: AdvisorProfile = {
   risk_tolerance: 'moderate',
