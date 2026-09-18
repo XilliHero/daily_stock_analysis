@@ -6,7 +6,7 @@ Single-user v1: owner_id fixed to DEFAULT_OWNER_ID (mirrors portfolio's optional
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from api.v1.schemas.advisor import (ActionModel, PlanResponse, ProfileRequest,
                                      ProfileResponse, SuggestResponse, TargetModel)
@@ -62,9 +62,9 @@ def suggest() -> SuggestResponse:
 
 
 @router.post("/plan", response_model=PlanResponse, summary="Generate the whole-portfolio plan")
-def create_plan() -> PlanResponse:
+def create_plan(smart: bool = Query(True, description="Use the LLM to refine candidate selection")) -> PlanResponse:
     try:
-        plan = generate_plan(owner_id=DEFAULT_OWNER_ID)
+        plan = generate_plan(owner_id=DEFAULT_OWNER_ID, smart=smart)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:  # target not locked
@@ -72,4 +72,4 @@ def create_plan() -> PlanResponse:
     return PlanResponse(mode=plan.mode, base=plan.base, target=plan.target,
                         actions=[ActionModel(**vars(a)) for a in plan.actions],
                         rationale=plan.rationale, markdown=render_markdown(plan),
-                        generated_at=plan.generated_at)
+                        generated_at=plan.generated_at, engine=plan.engine)

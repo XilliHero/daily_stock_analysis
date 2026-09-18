@@ -39,3 +39,26 @@ def test_generate_plan_requires_locked_target():
     client.put("/api/v1/advisor/profile", json=body)
     r = client.post("/api/v1/advisor/plan")
     assert r.status_code == 400  # target not locked
+
+
+def test_plan_smart_reports_engine(monkeypatch):
+    client = _client()
+    client.put("/api/v1/advisor/profile", json={
+        "risk_tolerance": "moderate", "horizon_years": 10, "investable_cash": 5000.0,
+        "target": {"weights": {"equity": 1.0}, "max_position_pct": 0.5, "locked": True}})
+    # Patch the low-level LLM call so no network/quota is used (empty order -> fallback).
+    import src.advisor.select as sel
+    monkeypatch.setattr(sel, "_default_complete", lambda system, user: '{"order": [], "rationale": "x"}')
+    r = client.post("/api/v1/advisor/plan?smart=true")
+    assert r.status_code == 200
+    assert r.json()["engine"] in ("ai", "deterministic")
+
+
+def test_plan_deterministic_engine_when_smart_false():
+    client = _client()
+    client.put("/api/v1/advisor/profile", json={
+        "risk_tolerance": "moderate", "horizon_years": 10, "investable_cash": 5000.0,
+        "target": {"weights": {"equity": 1.0}, "max_position_pct": 0.5, "locked": True}})
+    r = client.post("/api/v1/advisor/plan?smart=false")
+    assert r.status_code == 200
+    assert r.json()["engine"] == "deterministic"

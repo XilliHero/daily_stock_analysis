@@ -49,3 +49,4 @@ class PlanResponse(BaseModel):
     rationale: str
     markdown: str
     generated_at: str
+    engine: str = "deterministic"
