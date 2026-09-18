@@ -39,7 +39,8 @@ def compute_gap(current, target) -> Gap:
 
     sector_totals: Dict[str, float] = defaultdict(float)
     for p in current.positions:
-        if p.asset_class == "equity":
+        # "Unknown" is missing sector data, not a real sector — don't cap on it.
+        if p.asset_class == "equity" and p.sector and p.sector != "Unknown":
             sector_totals[p.sector] += p.value
     sec_cap = target.max_sector_pct * base
     sector_overage = {s: round(v - sec_cap, 6) for s, v in sector_totals.items() if v - sec_cap > 1e-9}

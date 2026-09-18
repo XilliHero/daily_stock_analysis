@@ -42,6 +42,18 @@ def test_non_equity_delta_becomes_dollar_target_action():
     assert fi[0].symbol == ""  # dollar target, not a specific security
 
 
+def test_unknown_sector_not_collapsed_by_sector_cap():
+    # 5 candidates with unknown sector must not be lumped into one capped bucket;
+    # only the per-position cap applies, so >2 can be bought.
+    cur = CurrentPicture(mode="deploy", base=1000.0, cash=1000.0, positions=[])
+    gap = Gap(class_delta={"equity": 1000.0}, position_overage={}, sector_overage={})
+    cands = [Candidate(f"T{i}", strategy_count=4, sector="Unknown") for i in range(5)]
+    actions = size_positions(gap, candidates=cands, current=cur,
+                             target=_target(max_position_pct=0.15, max_sector_pct=0.30))
+    buys = [a for a in actions if a.side == "buy"]
+    assert len(buys) >= 4  # would be only 2 if Unknown were treated as a single sector
+
+
 def test_unallocated_when_no_candidates():
     cur = CurrentPicture(mode="deploy", base=100.0, cash=100.0, positions=[])
     gap = Gap(class_delta={"equity": 100.0}, position_overage={}, sector_overage={})

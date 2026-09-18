@@ -32,3 +32,14 @@ def test_sector_over_cap_flagged():
     target = Target(weights={"equity": 1.0}, max_position_pct=1.0, max_sector_pct=0.30)
     gap = compute_gap(cur, target)
     assert round(gap.sector_overage["Energy"], 2) == 4.0  # 34 - 30% of 100
+
+
+def test_unknown_sector_not_flagged():
+    # "Unknown" is missing data, not a real sector — it must not trigger a trim.
+    cur = CurrentPicture(mode="rebalance", base=100.0, cash=0.0, positions=[
+        Position("A", "equity", "Unknown", 50.0),
+        Position("B", "equity", "Unknown", 50.0),
+    ])
+    target = Target(weights={"equity": 1.0}, max_position_pct=1.0, max_sector_pct=0.30)
+    gap = compute_gap(cur, target)
+    assert "Unknown" not in gap.sector_overage

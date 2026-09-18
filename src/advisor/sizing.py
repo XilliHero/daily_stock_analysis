@@ -40,7 +40,7 @@ def size_positions(gap, candidates, current, target) -> List[Action]:
     # 2) Buys per asset class from positive deltas.
     sector_running = defaultdict(float)
     for p in current.positions:
-        if p.asset_class == "equity":
+        if p.asset_class == "equity" and p.sector and p.sector != "Unknown":
             sector_running[p.sector] += p.value
 
     for asset_class, delta in gap.class_delta.items():
@@ -57,7 +57,9 @@ def size_positions(gap, candidates, current, target) -> List[Action]:
         for c in equity_cands:
             if remaining <= 1e-6:
                 break
-            headroom_sector = sec_cap - sector_running[c.sector]
+            known_sector = bool(c.sector) and c.sector != "Unknown"
+            # Unknown sector = missing data, so only the per-position cap constrains it.
+            headroom_sector = (sec_cap - sector_running[c.sector]) if known_sector else remaining
             room = min(pos_cap, headroom_sector, remaining)
             if room <= 1e-6:
                 continue
@@ -66,7 +68,8 @@ def size_positions(gap, candidates, current, target) -> List[Action]:
             if c.verdict:
                 reason += f"; deep-dive: {c.verdict}"
             actions.append(Action("buy", "equity", c.ticker, amount, reason))
-            sector_running[c.sector] += amount
+            if known_sector:
+                sector_running[c.sector] += amount
             remaining -= amount
 
         if remaining > 1.0:  # meaningfully unfilled
