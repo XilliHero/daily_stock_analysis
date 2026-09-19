@@ -40,6 +40,13 @@ export default defineConfig({
       output: {
         manualChunks(id: string) {
           if (!id.includes('node_modules')) return undefined
+          // Isolate React CORE only, matched precisely. It is a dependency leaf,
+          // so nothing forms a cross-chunk init cycle with it. Matching broadly
+          // (e.g. any "/react") sweeps in "*/react-*" ecosystem packages whose
+          // own deps land in `vendor`, creating a react-vendor <-> vendor cycle
+          // that leaves React undefined at eval ("undefined reading 'forwardRef'").
+          if (/[\\/]node_modules[\\/](react|react-dom|react-is|scheduler)[\\/]/.test(id))
+            return 'react-vendor'
           if (id.includes('recharts') || id.includes('/d3-')) return 'charts'
           if (
             id.includes('react-markdown') ||
@@ -53,8 +60,6 @@ export default defineConfig({
             return 'markdown'
           if (id.includes('motion') || id.includes('framer')) return 'motion'
           if (id.includes('react-router')) return 'router'
-          if (id.includes('/react') || id.includes('/scheduler') || id.includes('react-dom'))
-            return 'react-vendor'
           return 'vendor'
         },
       },
