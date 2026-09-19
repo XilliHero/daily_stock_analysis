@@ -48,16 +48,13 @@ export default defineConfig({
           if (/[\\/]node_modules[\\/](react|react-dom|react-is|scheduler)[\\/]/.test(id))
             return 'react-vendor'
           if (id.includes('recharts') || id.includes('/d3-')) return 'charts'
-          if (
-            id.includes('react-markdown') ||
-            id.includes('remark') ||
-            id.includes('micromark') ||
-            id.includes('mdast') ||
-            id.includes('unist') ||
-            id.includes('hast') ||
-            id.includes('remove-markdown')
-          )
-            return 'markdown'
+          // NOTE: the markdown/unified ecosystem (react-markdown, remark, micromark,
+          // mdast, unist, hast, …) shares generic util packages (unified, vfile,
+          // devlop, style-to-js, property-information, …) with the rest of `vendor`.
+          // Splitting it into its own chunk creates a markdown<->vendor init cycle,
+          // and those shared utils can't be enumerated into `markdown` without
+          // causing a cycle the other way. So it stays in `vendor` (still well under
+          // the size limit; markdown-using pages are eagerly imported anyway).
           if (id.includes('motion') || id.includes('framer')) return 'motion'
           if (id.includes('react-router')) return 'router'
           return 'vendor'
