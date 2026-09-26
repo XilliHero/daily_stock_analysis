@@ -2,7 +2,7 @@
 
 name: bull_trend
 display_name: Bull Trend (default)
-description: The default per-stock analysis strategy: identifies bullish alignment, trend continuation, and pullback buy opportunities.
+description: "The default per-stock analysis strategy: identifies bullish alignment, trend continuation, and pullback buy opportunities."
 category: trend
 core_rules: [1, 2, 3]
 required_tools:

@@ -22,6 +22,7 @@ from typing import Any, Callable, Dict, List, Optional
 from src.agent.llm_adapter import LLMToolAdapter
 from src.agent.runner import run_agent_loop, parse_dashboard_json
 from src.agent.tools.registry import ToolRegistry
+from src.config import get_config
 from src.report_language import normalize_report_language
 from src.market_context import get_market_role, get_market_guidelines
 
@@ -469,7 +470,7 @@ class AgentExecutor:
         default_skill_policy_section = ""
         if self.default_skill_policy:
             default_skill_policy_section = f"\n{self.default_skill_policy}\n"
-        report_language = normalize_report_language((context or {}).get("report_language", "zh"))
+        report_language = normalize_report_language((context or {}).get("report_language") or get_config().report_language)
         stock_code = (context or {}).get("stock_code", "")
         market_role = get_market_role(stock_code, report_language)
         market_guidelines = get_market_guidelines(stock_code, report_language)
@@ -518,7 +519,7 @@ class AgentExecutor:
         default_skill_policy_section = ""
         if self.default_skill_policy:
             default_skill_policy_section = f"\n{self.default_skill_policy}\n"
-        report_language = normalize_report_language((context or {}).get("report_language", "zh"))
+        report_language = normalize_report_language((context or {}).get("report_language") or get_config().report_language)
         stock_code = (context or {}).get("stock_code", "")
         market_role = get_market_role(stock_code, report_language)
         market_guidelines = get_market_guidelines(stock_code, report_language)
@@ -636,7 +637,7 @@ class AgentExecutor:
         """Build the initial user message."""
         parts = [task]
         if context:
-            report_language = normalize_report_language(context.get("report_language", "zh"))
+            report_language = normalize_report_language(context.get("report_language") or get_config().report_language)
             if context.get("stock_code"):
                 parts.append(f"\n股票代码: {context['stock_code']}")
             if context.get("report_type"):

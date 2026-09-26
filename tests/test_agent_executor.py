@@ -136,10 +136,12 @@ class TestAgentExecutor(unittest.TestCase):
 
         self.assertTrue(result.success)
         prompt = adapter.call_with_tools.call_args.args[0][0]["content"]
+        # Injected skill_instructions + default_skill_policy appear verbatim (language-independent).
         self.assertIn("### 技能 1: 默认多头趋势", prompt)
-        self.assertIn("专注于趋势交易", prompt)
         self.assertIn("多头排列必须条件", prompt)
-        self.assertIn("多头排列：MA5 > MA10 > MA20", prompt)
+        # The prompt template is English after the project-wide translation.
+        self.assertIn("trend-focused", prompt)
+        self.assertIn("Bullish alignment: MA5 > MA10 > MA20", prompt)
 
     def test_simple_text_response(self):
         """Agent returns text immediately (no tool calls) with JSON dashboard."""

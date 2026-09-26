@@ -3,7 +3,7 @@
 
 name: box_oscillation
 display_name: Range Oscillation
-description: Identifies price range boxes: buy at the box bottom, trim at the top; suited to sideways, range-bound markets.
+description: "Identifies price range boxes: buy at the box bottom, trim at the top; suited to sideways, range-bound markets."
 category: framework
 core_rules: [1, 2, 3]
 required_tools:
