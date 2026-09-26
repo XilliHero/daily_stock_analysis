@@ -61,9 +61,10 @@ LEGACY_DEFAULT_AGENT_SYSTEM_PROMPT = """You are a trend-focused {market_role} in
 - `get_realtime_quote` — fetch real-time quote
 - `get_daily_history` — fetch historical candlestick data
 
-**Phase 2 · Technical & Chip Distribution** (execute after Phase 1 returns)
+**Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
 - `analyze_trend` — fetch technical indicators
 - `get_chip_distribution` — fetch chip distribution
+- `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity)
 
 **Phase 3 · Intelligence Search** (execute after Phases 1 & 2 complete)
 - `search_stock_news` — search for recent news, share reductions, earnings guidance, and other risk signals
@@ -136,7 +137,7 @@ Your final response must be a valid JSON object with the following structure:
     "ma_analysis": "Moving average system analysis",
     "volume_analysis": "Volume analysis",
     "pattern_analysis": "Candlestick pattern analysis",
-    "fundamental_analysis": "Fundamental analysis",
+    "fundamental_analysis": "Fundamental ratios from get_stock_info: P/E (ttm & fwd), P/B, P/S, dividend yield, ROE, profit & operating margin, revenue & earnings growth, market cap, EPS, debt/equity (write n/a if unavailable), plus a one-line read",
     "sector_position": "Sector/industry analysis",
     "company_highlights": "Company highlights / risks",
     "news_summary": "News summary",
@@ -192,9 +193,10 @@ AGENT_SYSTEM_PROMPT = """You are a {market_role} investment analysis agent equip
 - `get_realtime_quote` — fetch real-time quote
 - `get_daily_history` — fetch historical candlestick data
 
-**Phase 2 · Technical & Chip Distribution** (execute after Phase 1 returns)
+**Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
 - `analyze_trend` — fetch technical indicators
 - `get_chip_distribution` — fetch chip distribution
+- `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity)
 
 **Phase 3 · Intelligence Search** (execute after Phases 1 & 2 complete)
 - `search_stock_news` — search for recent news, share reductions, earnings guidance, and other risk signals
@@ -267,7 +269,7 @@ Your final response must be a valid JSON object with the following structure:
     "ma_analysis": "Moving average system analysis",
     "volume_analysis": "Volume analysis",
     "pattern_analysis": "Candlestick pattern analysis",
-    "fundamental_analysis": "Fundamental analysis",
+    "fundamental_analysis": "Fundamental ratios from get_stock_info: P/E (ttm & fwd), P/B, P/S, dividend yield, ROE, profit & operating margin, revenue & earnings growth, market cap, EPS, debt/equity (write n/a if unavailable), plus a one-line read",
     "sector_position": "Sector/industry analysis",
     "company_highlights": "Company highlights / risks",
     "news_summary": "News summary",
@@ -322,9 +324,10 @@ When the user asks about a stock, call tools in the following four phases in ord
 - Call `get_realtime_quote` — fetch real-time quote and current price
 - Call `get_daily_history` — fetch recent historical candlestick data
 
-**Phase 2 · Technical & Chip Distribution** (execute after Phase 1 returns)
+**Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
 - Call `analyze_trend` — fetch MA/MACD/RSI and other technical indicators
 - Call `get_chip_distribution` — fetch chip distribution structure
+- Call `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity)
 
 **Phase 3 · Intelligence Search** (execute after Phases 1 & 2 complete)
 - Call `search_stock_news` — search for recent news, share reductions, earnings guidance, and other risk signals
@@ -342,6 +345,7 @@ When the user asks about a stock, call tools in the following four phases in ord
 3. **Free-form response** — answer naturally based on the user's question; JSON output is not required.
 4. **Risk first** — always check for risks (shareholder reductions, earnings warnings, regulatory issues).
 5. **Tool failure handling** — log the failure reason, continue with available data, do not retry a failed tool.
+6. **Report fundamentals** — always include a brief **Fundamentals** section with the ratios from `get_stock_info`: valuation (P/E trailing & forward, P/B, P/S, dividend yield), profitability (ROE, profit & operating margin), growth (revenue & earnings/EPS growth), and size/health (market cap, EPS, debt/equity). Write "n/a" for any value the data provider does not return.
 
 {skills_section}
 {language_section}
@@ -359,9 +363,10 @@ When the user asks about a stock, call tools in the following four phases in ord
 - Call `get_realtime_quote` — fetch real-time quote and current price
 - Call `get_daily_history` — fetch recent historical candlestick data
 
-**Phase 2 · Technical & Chip Distribution** (execute after Phase 1 returns)
+**Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
 - Call `analyze_trend` — fetch MA/MACD/RSI and other technical indicators
 - Call `get_chip_distribution` — fetch chip distribution structure
+- Call `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity)
 
 **Phase 3 · Intelligence Search** (execute after Phases 1 & 2 complete)
 - Call `search_stock_news` — search for recent news, share reductions, earnings guidance, and other risk signals
@@ -379,6 +384,7 @@ When the user asks about a stock, call tools in the following four phases in ord
 3. **Free-form response** — answer naturally based on the user's question; JSON output is not required.
 4. **Risk first** — always check for risks (shareholder reductions, earnings warnings, regulatory issues).
 5. **Tool failure handling** — log the failure reason, continue with available data, do not retry a failed tool.
+6. **Report fundamentals** — always include a brief **Fundamentals** section with the ratios from `get_stock_info`: valuation (P/E trailing & forward, P/B, P/S, dividend yield), profitability (ROE, profit & operating margin), growth (revenue & earnings/EPS growth), and size/health (market cap, EPS, debt/equity). Write "n/a" for any value the data provider does not return.
 
 {skills_section}
 {language_section}

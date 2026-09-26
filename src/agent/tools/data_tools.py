@@ -367,6 +367,64 @@ get_analysis_context_tool = ToolDefinition(
 # get_stock_info
 # ============================================================
 
+# yfinance .info field -> our fundamental ratio name (US/Canada path).
+_YF_FUNDAMENTAL_FIELDS = {
+    "pe_ratio": "trailingPE",
+    "forward_pe": "forwardPE",
+    "pb_ratio": "priceToBook",
+    "ps_ratio": "priceToSalesTrailing12Months",
+    "dividend_yield": "dividendYield",
+    "roe": "returnOnEquity",
+    "profit_margin": "profitMargins",
+    "operating_margin": "operatingMargins",
+    "revenue_growth": "revenueGrowth",
+    "earnings_growth": "earningsGrowth",
+    "market_cap": "marketCap",
+    "eps": "trailingEps",
+    "debt_to_equity": "debtToEquity",
+}
+
+
+def _is_yfinance_fundamental_market(code: str) -> bool:
+    """True for yfinance-native equities (US tickers, Canada .TO/.V) whose
+    fundamentals the A-share/HK pipeline does not cover."""
+    c = (code or "").strip().upper()
+    if c.endswith((".TO", ".V")):
+        return True
+    if c.isdigit() or c.endswith((".HK", ".SS", ".SZ")):  # A-share / HK use the CN pipeline
+        return False
+    return bool(c) and c.replace(".", "").replace("-", "").isalpha()
+
+
+# yfinance returns these as fractions (e.g. ROE 1.49 = 148.8%); express as percent
+# so the analysis shows intuitive values. dividend_yield is already a percent.
+_YF_PERCENT_FIELDS = ("roe", "profit_margin", "operating_margin", "revenue_growth", "earnings_growth")
+
+
+def _yfinance_fundamentals(code: str) -> dict:
+    """Full fundamental ratio set from yfinance for US/Canada stocks.
+
+    Percent-style metrics are normalised to percentages (2 dp); dividend_yield is
+    left as-is because yfinance already reports it as a percent.
+    """
+    try:
+        import yfinance as yf
+        info = yf.Ticker(code.strip().upper()).info or {}
+    except Exception as e:
+        logger.warning(f"yfinance fundamentals failed for {code}: {e}")
+        return {}
+    out = {}
+    for name, yf_key in _YF_FUNDAMENTAL_FIELDS.items():
+        val = info.get(yf_key)
+        if val is not None and name in _YF_PERCENT_FIELDS:
+            try:
+                val = round(float(val) * 100, 2)
+            except (TypeError, ValueError):
+                pass
+        out[name] = val
+    return out
+
+
 def _handle_get_stock_info(stock_code: str) -> dict:
     """Get stock fundamental information through unified fundamental context."""
     manager = _get_fetcher_manager()
@@ -387,7 +445,7 @@ def _handle_get_stock_info(stock_code: str) -> dict:
     except Exception:
         pass
 
-    return {
+    result = {
         "code": stock_code.upper(),
         "name": stock_name,
         "pe_ratio": valuation.get("pe_ratio"),
@@ -401,6 +459,21 @@ def _handle_get_stock_info(stock_code: str) -> dict:
         "boards": belong_boards,
         "sector_rankings": sector_rankings,
     }
+
+    # US/Canada equities aren't covered by the A-share fundamental pipeline, so
+    # pull the full ratio set from yfinance and expose it under `fundamentals`.
+    if _is_yfinance_fundamental_market(stock_code):
+        fundamentals = _yfinance_fundamentals(stock_code)
+        if any(v is not None for v in fundamentals.values()):
+            result["fundamentals"] = fundamentals
+            if result["pe_ratio"] is None:
+                result["pe_ratio"] = fundamentals.get("pe_ratio")
+            if result["pb_ratio"] is None:
+                result["pb_ratio"] = fundamentals.get("pb_ratio")
+            if result["total_mv"] is None:
+                result["total_mv"] = fundamentals.get("market_cap")
+
+    return result
 
 
 get_stock_info_tool = ToolDefinition(
