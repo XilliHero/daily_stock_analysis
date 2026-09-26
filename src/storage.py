@@ -406,7 +406,7 @@ class PortfolioAccount(Base):
     name = Column(String(64), nullable=False)
     broker = Column(String(64))
     market = Column(String(8), nullable=False, default='cn', index=True)  # cn/hk/us
-    base_currency = Column(String(8), nullable=False, default='CNY')
+    base_currency = Column(String(8), nullable=False, default='USD')
     is_active = Column(Boolean, nullable=False, default=True, index=True)
     created_at = Column(DateTime, default=datetime.now, index=True)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

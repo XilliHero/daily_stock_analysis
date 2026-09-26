@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -35,6 +36,17 @@ VALID_SIDES = {"buy", "sell"}
 VALID_CASH_DIRECTIONS = {"in", "out"}
 VALID_CORPORATE_ACTIONS = {"cash_dividend", "split_adjustment"}
 PORTFOLIO_FX_REFRESH_DISABLED_REASON = "portfolio_fx_update_disabled"
+
+
+def base_reporting_currency(default: str = "USD") -> str:
+    """Currency that cross-account portfolio totals roll up to.
+
+    Reads ``PORTFOLIO_BASE_CURRENCY`` from the environment; otherwise falls back
+    to ``default`` — callers pass a sensible per-context value (e.g. the first
+    account's own currency) so single-currency setups need no FX conversion.
+    """
+    cur = (os.getenv("PORTFOLIO_BASE_CURRENCY", "") or "").strip().upper()
+    return cur or default
 
 
 class PortfolioConflictError(Exception):
@@ -449,7 +461,12 @@ class PortfolioService:
             account_rows = self.repo.list_accounts(include_inactive=False)
 
         accounts_payload: List[Dict[str, Any]] = []
-        aggregate_currency = "CNY"
+        # Cross-account total needs one currency. Prefer PORTFOLIO_BASE_CURRENCY;
+        # else fall back to the first account's own currency (so single-currency
+        # setups convert 1:1 and need no FX rate).
+        aggregate_currency = base_reporting_currency(
+            default=(account_rows[0].base_currency if account_rows else "USD")
+        )
         aggregate = {
             "total_cash": 0.0,
             "total_market_value": 0.0,

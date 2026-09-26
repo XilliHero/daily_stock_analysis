@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from src.config import Config, get_config
 from src.repositories.portfolio_repo import PortfolioRepository
-from src.services.portfolio_service import PortfolioService
+from src.services.portfolio_service import PortfolioService, base_reporting_currency
 
 
 class PortfolioRiskService:
@@ -175,7 +175,7 @@ class PortfolioRiskService:
                 converted, _, _ = self.portfolio_service.convert_amount(
                     amount=market_value,
                     from_currency=valuation_currency,
-                    to_currency="CNY",
+                    to_currency=base_reporting_currency(),
                     as_of_date=as_of_date,
                 )
                 exposure_by_symbol[symbol] = exposure_by_symbol.get(symbol, 0.0) + converted
@@ -231,7 +231,7 @@ class PortfolioRiskService:
                 converted, _, _ = self.portfolio_service.convert_amount(
                     amount=market_value,
                     from_currency=valuation_currency,
-                    to_currency="CNY",
+                    to_currency=base_reporting_currency(),
                     as_of_date=as_of_date,
                 )
 

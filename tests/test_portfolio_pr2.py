@@ -383,7 +383,9 @@ class PortfolioPr2TestCase(unittest.TestCase):
         self.assertGreater(report["drawdown"]["max_drawdown_pct"], 10.0)
         self.assertTrue(report["drawdown"]["alert"])
 
+    @patch.dict(os.environ, {"PORTFOLIO_BASE_CURRENCY": "CNY"})
     def test_concentration_uses_cny_normalized_exposure(self) -> None:
+        # Reporting currency is now configurable; this test exercises the CNY case.
         cn_account = self.service.create_account(name="CN", broker="Demo", market="cn", base_currency="CNY")
         us_account = self.service.create_account(name="US", broker="Demo", market="us", base_currency="USD")
         cn_id = cn_account["id"]
