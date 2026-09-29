@@ -33,6 +33,7 @@ vi.mock('../../api/analysis', async () => {
     ...actual,
     analysisApi: {
       analyzeAsync: vi.fn(),
+      getFundamentals: vi.fn().mockResolvedValue({ code: '', name: '', fundamentals: {} }),
     },
   };
 });

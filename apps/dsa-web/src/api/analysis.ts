@@ -6,6 +6,7 @@ import type {
   AnalyzeResponse,
   AnalyzeAsyncResponse,
   AnalysisReport,
+  FundamentalsResponse,
   TaskStatus,
   TaskListResponse,
 } from '../types/analysis';
@@ -13,6 +14,14 @@ import type {
 // ============ API Interfaces ============
 
 export const analysisApi = {
+  /**
+   * Fetch fundamental ratios for a stock (valuation, profitability, growth, size).
+   */
+  getFundamentals: async (code: string): Promise<FundamentalsResponse> => {
+    const response = await apiClient.get('/api/v1/analysis/fundamentals', { params: { code } });
+    return toCamelCase<FundamentalsResponse>(response.data);
+  },
+
   /**
    * Trigger stock analysis.
    * @param data Analysis request payload

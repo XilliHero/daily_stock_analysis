@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { BarChart3, BriefcaseBusiness, Compass, Home, LogOut, MessageSquareQuote, Settings2 } from 'lucide-react';
+import { BarChart3, BookOpen, BriefcaseBusiness, Compass, Home, LogOut, MessageSquareQuote, Settings2 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAgentChatStore } from '../../stores/agentChatStore';
@@ -28,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'chat', label: 'Ask', to: '/chat', icon: MessageSquareQuote, badge: 'completion' },
   { key: 'portfolio', label: 'Holdings', to: '/portfolio', icon: BriefcaseBusiness },
   { key: 'plan', label: 'Plan', to: '/plan', icon: Compass },
+  { key: 'ratios', label: 'Ratios', to: '/ratios', icon: BookOpen },
   { key: 'backtest', label: 'Backtest', to: '/backtest', icon: BarChart3 },
   { key: 'settings', label: 'Settings', to: '/settings', icon: Settings2 },
 ];

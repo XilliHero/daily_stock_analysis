@@ -100,6 +100,29 @@ export interface AnalysisReport {
   details?: ReportDetails;
 }
 
+/** Fundamental ratios for a stock (camelCased from the API) */
+export interface StockFundamentals {
+  peRatio?: number | null;
+  forwardPe?: number | null;
+  pbRatio?: number | null;
+  psRatio?: number | null;
+  dividendYield?: number | null;
+  roe?: number | null;
+  profitMargin?: number | null;
+  operatingMargin?: number | null;
+  revenueGrowth?: number | null;
+  earningsGrowth?: number | null;
+  marketCap?: number | null;
+  eps?: number | null;
+  debtToEquity?: number | null;
+}
+
+export interface FundamentalsResponse {
+  code: string;
+  name?: string;
+  fundamentals: StockFundamentals;
+}
+
 // ============ Analysis Result Types ============
 
 /** Sync analysis response */

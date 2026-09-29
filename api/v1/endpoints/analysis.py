@@ -30,6 +30,7 @@ from api.deps import get_config_dep
 from api.v1.schemas.analysis import (
     AnalyzeRequest,
     AnalysisResultResponse,
+    FundamentalsResponse,
     TaskAccepted,
     BatchTaskAcceptedResponse,
     BatchTaskAcceptedItem,
@@ -67,6 +68,31 @@ from src.utils.data_processing import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.get("/fundamentals", response_model=FundamentalsResponse, summary="Fundamental ratios for a stock")
+def get_fundamentals(code: str = Query(..., description="Stock ticker, e.g. AAPL, CNQ.TO, 600519")) -> FundamentalsResponse:
+    """Live fundamental ratios for one stock (valuation, profitability, growth, size).
+
+    US/Canada tickers get the full set from yfinance; A-share/HK return whatever
+    the fundamental pipeline provides. Failures degrade to an empty set rather than error.
+    """
+    from src.agent.tools.data_tools import _handle_get_stock_info
+    try:
+        info = _handle_get_stock_info(code) or {}
+    except Exception as exc:
+        logger.warning(f"fundamentals lookup failed for {code}: {exc}")
+        return FundamentalsResponse(code=code.upper(), name=None, fundamentals={})
+    fundamentals = info.get("fundamentals")
+    if not fundamentals:
+        partial = {
+            "pe_ratio": info.get("pe_ratio"),
+            "pb_ratio": info.get("pb_ratio"),
+            "market_cap": info.get("total_mv"),
+        }
+        fundamentals = partial if any(v is not None for v in partial.values()) else {}
+    return FundamentalsResponse(code=code.upper(), name=info.get("name"), fundamentals=fundamentals or {})
+
 
 _SUPPORTED_FREE_TEXT_RE = re.compile(r"^[A-Za-z0-9.*\-+\u3400-\u9fff\s]+$")
 

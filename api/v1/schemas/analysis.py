@@ -10,7 +10,7 @@
 3. 定义异步任务队列相关模型
 """
 
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -87,9 +87,17 @@ class AnalyzeRequest(BaseModel):
         }
 
 
+class FundamentalsResponse(BaseModel):
+    """Fundamental ratios for a single stock (US/Canada full set; A-share partial)."""
+
+    code: str = Field(..., description="Stock ticker")
+    name: Optional[str] = Field(None, description="Company name")
+    fundamentals: Dict[str, Any] = Field(default_factory=dict, description="Ratio name -> value (or null)")
+
+
 class AnalysisResultResponse(BaseModel):
     """分析结果响应模型"""
-    
+
     query_id: str = Field(..., description="分析记录唯一标识")
     stock_code: str = Field(..., description="股票代码")
     stock_name: Optional[str] = Field(None, description="股票名称")
