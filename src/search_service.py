@@ -1894,6 +1894,173 @@ class SearXNGSearchProvider(BaseSearchProvider):
         )
 
 
+class YFinanceNewsProvider(BaseSearchProvider):
+    """
+    Yahoo Finance news fallback provider — requires no API key.
+
+    Uses yfinance.Ticker.news to retrieve headlines for any ticker that
+    Yahoo Finance supports (US, TSX, HK, crypto, ETFs, commodities).
+    Registered as the last provider in SearchService so it only fires
+    when every key-based provider fails or is unconfigured.
+    """
+
+    # Common English words that may appear in uppercase in queries but are
+    # not ticker symbols — skip them during extraction.
+    _WORD_BLOCKLIST = {
+        'THE', 'AND', 'FOR', 'NEWS', 'STOCK', 'LATEST', 'FUND', 'INDEX',
+        'RISK', 'SELECT', 'SECTOR', 'TRUST', 'CORP', 'INC', 'ETF', 'BUY',
+        'SELL', 'TRADE', 'MARKET', 'PRICE', 'SHARE', 'EVENTS', 'REPORT',
+        'ANALYST', 'RATING', 'TARGET', 'REVENUE', 'PROFIT', 'GROWTH',
+        'INSIDER', 'LAWSUIT', 'EARNINGS', 'INDUSTRY', 'OUTLOOK',
+    }
+
+    def __init__(self):
+        super().__init__([], 'YFinanceNews')
+
+    @property
+    def is_available(self) -> bool:
+        try:
+            import yfinance  # noqa: F401
+            return True
+        except ImportError:
+            return False
+
+    def _extract_ticker(self, query: str) -> Optional[str]:
+        """
+        Extract the most likely ticker symbol from a free-text query string.
+
+        Precedence:
+        1. Crypto / commodity with dash suffix  (BTC-USD, CORN... no dash for CORN)
+        2. Exchange-suffixed ticker             (MDA.TO, BRK.B)
+        3. Pure uppercase 2-5 letter word not in blocklist (AAPL, XLE)
+        """
+        tokens = query.split()
+
+        # Priority 1: dash-separated codes (BTC-USD, ETH-USD)
+        for token in tokens:
+            if re.match(r'^[A-Z]{2,6}-[A-Z]{2,4}$', token):
+                return token
+
+        # Priority 2: suffixed tickers (MDA.TO, BRK.B, 0700.HK)
+        for token in tokens:
+            if re.match(r'^[A-Z0-9]{1,6}\.[A-Z]{1,2}$', token):
+                return token
+
+        # Priority 3: plain uppercase ticker, 2-5 letters, not a common word
+        for token in tokens:
+            clean = re.sub(r'[^A-Z]', '', token)
+            if (2 <= len(clean) <= 5 and clean not in self._WORD_BLOCKLIST):
+                return clean
+
+        return None
+
+    def _do_search(self, query: str, api_key: str, max_results: int, days: int = 7) -> SearchResponse:
+        # Not used — we override search() directly since no API key is needed.
+        raise NotImplementedError
+
+    def search(self, query: str, max_results: int = 5, days: int = 7, **kwargs) -> SearchResponse:
+        """Fetch Yahoo Finance news headlines for the ticker found in *query*."""
+        try:
+            import yfinance as yf
+        except ImportError:
+            return SearchResponse(
+                query=query, results=[], provider=self._name,
+                success=False, error_message="yfinance not installed",
+            )
+
+        ticker_symbol = self._extract_ticker(query.upper())
+        if not ticker_symbol:
+            logger.debug("[YFinanceNews] Could not extract ticker from query: %s", query[:80])
+            return SearchResponse(
+                query=query, results=[], provider=self._name,
+                success=False, error_message="Could not extract ticker from query",
+            )
+
+        start_time = time.time()
+        try:
+            ticker = yf.Ticker(ticker_symbol)
+            raw_news = ticker.news or []
+        except Exception as exc:
+            logger.warning("[YFinanceNews] Failed to fetch news for %s: %s", ticker_symbol, exc)
+            return SearchResponse(
+                query=query, results=[], provider=self._name,
+                success=False, error_message=str(exc),
+                search_time=time.time() - start_time,
+            )
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        results: List[SearchResult] = []
+
+        for item in raw_news:
+            if len(results) >= max_results:
+                break
+
+            # yfinance ≥0.2.x wraps content in a nested dict
+            content = item.get('content', item)
+
+            title = content.get('title', '') or item.get('title', '')
+            if not title:
+                continue
+
+            url = (
+                content.get('canonicalUrl', {}).get('url', '')
+                or content.get('clickThroughUrl', {}).get('url', '')
+                or item.get('link', '')
+                or item.get('url', '')
+            )
+            source = (
+                content.get('provider', {}).get('displayName', '')
+                or item.get('publisher', '')
+                or 'Yahoo Finance'
+            )
+            snippet = (
+                content.get('summary', '')
+                or item.get('summary', '')
+                or item.get('description', '')
+                or title
+            )
+
+            # Parse published timestamp (Unix int or ISO string)
+            published_date: Optional[str] = None
+            pub_ts = (
+                content.get('pubDate')
+                or item.get('providerPublishTime')
+                or item.get('pubDate')
+            )
+            if pub_ts:
+                try:
+                    if isinstance(pub_ts, (int, float)):
+                        pub_dt = datetime.fromtimestamp(int(pub_ts), tz=timezone.utc)
+                    else:
+                        pub_dt = datetime.fromisoformat(str(pub_ts).rstrip('Z')).replace(tzinfo=timezone.utc)
+                    if pub_dt < cutoff:
+                        continue  # too old, skip
+                    published_date = pub_dt.strftime('%Y-%m-%d')
+                except Exception:
+                    pass
+
+            results.append(SearchResult(
+                title=title,
+                snippet=snippet[:300],
+                url=url,
+                source=source,
+                published_date=published_date,
+            ))
+
+        elapsed = time.time() - start_time
+        logger.info(
+            "[YFinanceNews] %s: fetched %d/%d news items within %dd window (%.2fs)",
+            ticker_symbol, len(results), len(raw_news), days, elapsed,
+        )
+        return SearchResponse(
+            query=query,
+            results=results,
+            provider=self._name,
+            success=True,
+            search_time=elapsed,
+        )
+
+
 class SearchService:
     """
     搜索服务
@@ -2010,6 +2177,14 @@ class SearchService:
                 logger.info("已配置 SearXNG 搜索，共 %s 个自建实例", len(searxng_base_urls))
             else:
                 logger.info("已启用 SearXNG 公共实例自动发现模式")
+
+        # 7. YFinance News (zero-config fallback — always registered last)
+        yf_news_provider = YFinanceNewsProvider()
+        if yf_news_provider.is_available:
+            self._providers.append(yf_news_provider)
+            logger.info("Yahoo Finance News fallback provider enabled (no API key required)")
+        else:
+            logger.warning("yfinance not installed — Yahoo Finance News fallback unavailable")
 
         if not self._providers:
             logger.warning("未配置任何搜索能力，新闻搜索功能将不可用")

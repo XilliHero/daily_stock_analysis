@@ -34,9 +34,13 @@ def detect_market(stock_code: Optional[str]) -> str:
     if code.isdigit() and len(code) == 5:
         return "hk"
 
+    # TSX (Toronto Stock Exchange): .TO suffix or TSE: prefix
+    if code.endswith('.TO') or code.startswith('TSE:'):
+        return "ca"
+
     # US stocks: 1-5 uppercase letters (AAPL, TSLA, GOOGL)
-    # Also handles suffixed forms like BRK.B
-    if re.match(r'^[A-Z]{1,5}(\.[A-Z]{1,2})?$', code):
+    # Also handles suffixed forms like BRK.B (single letter suffix only)
+    if re.match(r'^[A-Z]{1,5}(\.[A-Z])?$', code):
         return "us"
 
     # Default: A-shares (6-digit numbers like 600519, 000001)
@@ -57,6 +61,10 @@ _MARKET_ROLES = {
     "us": {
         "zh": "美股",
         "en": "US stock",
+    },
+    "ca": {
+        "zh": "加拿大股票",
+        "en": "Canadian stock (TSX)",
     },
 }
 
@@ -89,6 +97,16 @@ _MARKET_GUIDELINES = {
         "en": (
             "- This analysis covers a **US stock** (listed on NYSE/NASDAQ).\n"
             "- US stocks have no daily price limits (but have circuit breakers), allow T+0 and pre/after-market trading. Consider USD FX, Fed policy, and SEC regulations."
+        ),
+    },
+    "ca": {
+        "zh": (
+            "- 本次分析对象为 **加拿大股票**（多伦多证券交易所上市股票，TSX）。\n"
+            "- TSX 股票无涨跌停限制，支持 T+2 交收，需关注加元汇率、加拿大央行政策及大宗商品价格（能源、矿业权重较大）。"
+        ),
+        "en": (
+            "- This analysis covers a **Canadian stock** (listed on the Toronto Stock Exchange, TSX).\n"
+            "- TSX stocks have no daily price limits, T+2 settlement. Consider CAD FX, Bank of Canada policy, and commodity prices (energy and mining are heavily weighted on TSX)."
         ),
     },
 }
