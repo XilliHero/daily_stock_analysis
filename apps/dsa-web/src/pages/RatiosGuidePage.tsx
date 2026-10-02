@@ -91,6 +91,31 @@ const GROUPS: RatioGroup[] = [
     ],
   },
   {
+    heading: 'Intrinsic Value',
+    blurb:
+      'An estimate of what a share is actually worth based on the business, so you can compare it to the market price. The app combines two models and shows the margin of safety.',
+    ratios: [
+      {
+        name: 'DCF — Discounted Cash Flow',
+        what: 'Projects the company’s free cash flow years into the future, then discounts it back to today’s dollars to get a per-share fair value.',
+        read: 'The headline estimate. If the current price is well below the DCF value you may be getting a discount; well above it suggests the market is pricing in a lot of optimism. Very sensitive to the growth and discount-rate assumptions.',
+        target: 'We use conservative assumptions: growth capped at ~10%, a ~10% discount rate, ~2.5% terminal growth over a 10-year projection. Needs positive free cash flow, so it’s skipped for many banks and unprofitable firms.',
+      },
+      {
+        name: 'Graham Number & revised formula',
+        what: 'Benjamin Graham’s quick sanity checks. The Graham Number is √(22.5 × EPS × book value per share); the revised formula is EPS × (8.5 + 2 × growth%).',
+        read: 'A transparent cross-check on the DCF. When the two broadly agree, you can trust the range more; when they diverge sharply, treat the fair value as a wide band rather than a precise figure.',
+        target: 'Used as a conservative floor and cross-check — not the headline. Requires positive earnings and book value.',
+      },
+      {
+        name: 'Margin of Safety',
+        what: 'How far the current price sits below the estimated fair value — the cushion that protects you if the estimate is too optimistic.',
+        read: 'A positive margin means the stock trades below its estimated worth (undervalued); a negative one means it trades above (overvalued). Value investors like a meaningful cushion before buying.',
+        target: 'Undervalued when price is ≥10% below fair value, overvalued when ≥10% above, otherwise fairly valued. A bigger positive margin is safer — but it’s only as good as the assumptions behind the estimate.',
+      },
+    ],
+  },
+  {
     heading: 'Size & Health',
     blurb: 'How large the company is and how much leverage it carries.',
     ratios: [

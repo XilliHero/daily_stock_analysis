@@ -93,6 +93,10 @@ class FundamentalsResponse(BaseModel):
     code: str = Field(..., description="Stock ticker")
     name: Optional[str] = Field(None, description="Company name")
     fundamentals: Dict[str, Any] = Field(default_factory=dict, description="Ratio name -> value (or null)")
+    intrinsic_value: Optional[Dict[str, Any]] = Field(
+        None,
+        description="DCF + Graham intrinsic-value estimate (US/Canada only; null when not computable)",
+    )
 
 
 class AnalysisResultResponse(BaseModel):

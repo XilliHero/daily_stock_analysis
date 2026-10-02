@@ -117,10 +117,40 @@ export interface StockFundamentals {
   debtToEquity?: number | null;
 }
 
+export interface IntrinsicValueAssumptions {
+  growthRatePct: number;
+  discountRatePct: number;
+  terminalGrowthPct: number;
+  projectionYears: number;
+}
+
+export interface IntrinsicValue {
+  /** Headline per-share fair value (DCF when available, else Graham). */
+  fairValue: number;
+  /** Which model produced the headline. */
+  method: 'dcf' | 'graham';
+  currentPrice?: number | null;
+  /** (fairValue - price) / price, as a percentage. */
+  upsidePct?: number | null;
+  /** (fairValue - price) / fairValue, as a percentage (margin of safety). */
+  marginOfSafetyPct?: number | null;
+  verdict?: 'undervalued' | 'fair' | 'overvalued' | null;
+  /** Discounted-cash-flow fair value (null if not computable). */
+  dcf?: number | null;
+  /** Graham Number cross-check. */
+  graham?: number | null;
+  /** Graham's revised growth-formula value. */
+  grahamRevised?: number | null;
+  /** Whether DCF and Graham broadly agree. */
+  agreement?: 'agree' | 'diverge' | null;
+  assumptions: IntrinsicValueAssumptions;
+}
+
 export interface FundamentalsResponse {
   code: string;
   name?: string;
   fundamentals: StockFundamentals;
+  intrinsicValue?: IntrinsicValue | null;
 }
 
 // ============ Analysis Result Types ============

@@ -64,7 +64,7 @@ LEGACY_DEFAULT_AGENT_SYSTEM_PROMPT = """You are a trend-focused {market_role} in
 **Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
 - `analyze_trend` — fetch technical indicators
 - `get_chip_distribution` — fetch chip distribution
-- `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity)
+- `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity) and the intrinsic-value estimate (DCF fair value with a Graham cross-check, and margin of safety vs the current price)
 
 **Phase 3 · Intelligence Search** (execute after Phases 1 & 2 complete)
 - `search_stock_news` — search for recent news, share reductions, earnings guidance, and other risk signals
@@ -137,7 +137,7 @@ Your final response must be a valid JSON object with the following structure:
     "ma_analysis": "Moving average system analysis",
     "volume_analysis": "Volume analysis",
     "pattern_analysis": "Candlestick pattern analysis",
-    "fundamental_analysis": "Fundamental ratios from get_stock_info: P/E (ttm & fwd), P/B, P/S, dividend yield, ROE, profit & operating margin, revenue & earnings growth, market cap, EPS, debt/equity (write n/a if unavailable), plus a one-line read",
+    "fundamental_analysis": "Fundamental ratios from get_stock_info: P/E (ttm & fwd), P/B, P/S, dividend yield, ROE, profit & operating margin, revenue & earnings growth, market cap, EPS, debt/equity (write n/a if unavailable); then the intrinsic value from get_stock_info (DCF fair value, Graham cross-check, verdict and margin of safety vs price), plus a one-line read",
     "sector_position": "Sector/industry analysis",
     "company_highlights": "Company highlights / risks",
     "news_summary": "News summary",
@@ -196,7 +196,7 @@ AGENT_SYSTEM_PROMPT = """You are a {market_role} investment analysis agent equip
 **Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
 - `analyze_trend` — fetch technical indicators
 - `get_chip_distribution` — fetch chip distribution
-- `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity)
+- `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity) and the intrinsic-value estimate (DCF fair value with a Graham cross-check, and margin of safety vs the current price)
 
 **Phase 3 · Intelligence Search** (execute after Phases 1 & 2 complete)
 - `search_stock_news` — search for recent news, share reductions, earnings guidance, and other risk signals
@@ -269,7 +269,7 @@ Your final response must be a valid JSON object with the following structure:
     "ma_analysis": "Moving average system analysis",
     "volume_analysis": "Volume analysis",
     "pattern_analysis": "Candlestick pattern analysis",
-    "fundamental_analysis": "Fundamental ratios from get_stock_info: P/E (ttm & fwd), P/B, P/S, dividend yield, ROE, profit & operating margin, revenue & earnings growth, market cap, EPS, debt/equity (write n/a if unavailable), plus a one-line read",
+    "fundamental_analysis": "Fundamental ratios from get_stock_info: P/E (ttm & fwd), P/B, P/S, dividend yield, ROE, profit & operating margin, revenue & earnings growth, market cap, EPS, debt/equity (write n/a if unavailable); then the intrinsic value from get_stock_info (DCF fair value, Graham cross-check, verdict and margin of safety vs price), plus a one-line read",
     "sector_position": "Sector/industry analysis",
     "company_highlights": "Company highlights / risks",
     "news_summary": "News summary",
@@ -327,7 +327,7 @@ When the user asks about a stock, call tools in the following four phases in ord
 **Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
 - Call `analyze_trend` — fetch MA/MACD/RSI and other technical indicators
 - Call `get_chip_distribution` — fetch chip distribution structure
-- Call `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity)
+- Call `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity) and the intrinsic-value estimate (DCF fair value with a Graham cross-check, and margin of safety vs the current price)
 
 **Phase 3 · Intelligence Search** (execute after Phases 1 & 2 complete)
 - Call `search_stock_news` — search for recent news, share reductions, earnings guidance, and other risk signals
@@ -346,6 +346,7 @@ When the user asks about a stock, call tools in the following four phases in ord
 4. **Risk first** — always check for risks (shareholder reductions, earnings warnings, regulatory issues).
 5. **Tool failure handling** — log the failure reason, continue with available data, do not retry a failed tool.
 6. **Report fundamentals** — always include a brief **Fundamentals** section with the ratios from `get_stock_info`: valuation (P/E trailing & forward, P/B, P/S, dividend yield), profitability (ROE, profit & operating margin), growth (revenue & earnings/EPS growth), and size/health (market cap, EPS, debt/equity). Write "n/a" for any value the data provider does not return.
+7. **Report intrinsic value** — when `get_stock_info` returns an `intrinsic_value`, add a short **Intrinsic Value** line: the DCF fair value per share, the Graham cross-check, and whether the stock looks undervalued/fairly valued/overvalued with its margin of safety vs the current price. State that it is a conservative estimate (growth capped, ~10% discount rate), not a precise target, and omit it entirely if not provided.
 
 {skills_section}
 {language_section}
@@ -366,7 +367,7 @@ When the user asks about a stock, call tools in the following four phases in ord
 **Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
 - Call `analyze_trend` — fetch MA/MACD/RSI and other technical indicators
 - Call `get_chip_distribution` — fetch chip distribution structure
-- Call `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity)
+- Call `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity) and the intrinsic-value estimate (DCF fair value with a Graham cross-check, and margin of safety vs the current price)
 
 **Phase 3 · Intelligence Search** (execute after Phases 1 & 2 complete)
 - Call `search_stock_news` — search for recent news, share reductions, earnings guidance, and other risk signals
@@ -385,6 +386,7 @@ When the user asks about a stock, call tools in the following four phases in ord
 4. **Risk first** — always check for risks (shareholder reductions, earnings warnings, regulatory issues).
 5. **Tool failure handling** — log the failure reason, continue with available data, do not retry a failed tool.
 6. **Report fundamentals** — always include a brief **Fundamentals** section with the ratios from `get_stock_info`: valuation (P/E trailing & forward, P/B, P/S, dividend yield), profitability (ROE, profit & operating margin), growth (revenue & earnings/EPS growth), and size/health (market cap, EPS, debt/equity). Write "n/a" for any value the data provider does not return.
+7. **Report intrinsic value** — when `get_stock_info` returns an `intrinsic_value`, add a short **Intrinsic Value** line: the DCF fair value per share, the Graham cross-check, and whether the stock looks undervalued/fairly valued/overvalued with its margin of safety vs the current price. State that it is a conservative estimate (growth capped, ~10% discount rate), not a precise target, and omit it entirely if not provided.
 
 {skills_section}
 {language_section}

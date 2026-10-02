@@ -15,6 +15,7 @@ from threading import Lock
 from typing import Optional
 
 from src.agent.tools.registry import ToolParameter, ToolDefinition
+from src.agent.tools.intrinsic_value import compute_intrinsic_value
 
 logger = logging.getLogger(__name__)
 
@@ -401,18 +402,28 @@ def _is_yfinance_fundamental_market(code: str) -> bool:
 _YF_PERCENT_FIELDS = ("roe", "profit_margin", "operating_margin", "revenue_growth", "earnings_growth")
 
 
-def _yfinance_fundamentals(code: str) -> dict:
-    """Full fundamental ratio set from yfinance for US/Canada stocks.
+def _fetch_yf_info(code: str) -> dict:
+    """Raw yfinance ``.info`` dict for a ticker (empty dict on failure).
 
-    Percent-style metrics are normalised to percentages (2 dp); dividend_yield is
-    left as-is because yfinance already reports it as a percent.
+    Isolated so fundamentals and intrinsic value share a single network call.
     """
     try:
         import yfinance as yf
-        info = yf.Ticker(code.strip().upper()).info or {}
+        return yf.Ticker(code.strip().upper()).info or {}
     except Exception as e:
-        logger.warning(f"yfinance fundamentals failed for {code}: {e}")
+        logger.warning(f"yfinance .info failed for {code}: {e}")
         return {}
+
+
+def _yfinance_fundamentals(code: str, info: Optional[dict] = None) -> dict:
+    """Full fundamental ratio set from yfinance for US/Canada stocks.
+
+    Percent-style metrics are normalised to percentages (2 dp); dividend_yield is
+    left as-is because yfinance already reports it as a percent. Pass a preloaded
+    ``info`` dict to avoid refetching.
+    """
+    if info is None:
+        info = _fetch_yf_info(code)
     out = {}
     for name, yf_key in _YF_FUNDAMENTAL_FIELDS.items():
         val = info.get(yf_key)
@@ -462,8 +473,10 @@ def _handle_get_stock_info(stock_code: str) -> dict:
 
     # US/Canada equities aren't covered by the A-share fundamental pipeline, so
     # pull the full ratio set from yfinance and expose it under `fundamentals`.
+    # A single `.info` fetch feeds both the ratios and the intrinsic-value model.
     if _is_yfinance_fundamental_market(stock_code):
-        fundamentals = _yfinance_fundamentals(stock_code)
+        info = _fetch_yf_info(stock_code)
+        fundamentals = _yfinance_fundamentals(stock_code, info)
         if any(v is not None for v in fundamentals.values()):
             result["fundamentals"] = fundamentals
             if result["pe_ratio"] is None:
@@ -472,6 +485,13 @@ def _handle_get_stock_info(stock_code: str) -> dict:
                 result["pb_ratio"] = fundamentals.get("pb_ratio")
             if result["total_mv"] is None:
                 result["total_mv"] = fundamentals.get("market_cap")
+        try:
+            intrinsic = compute_intrinsic_value(info)
+        except Exception as e:  # never let an estimate break the whole lookup
+            logger.warning(f"intrinsic value failed for {stock_code}: {e}")
+            intrinsic = None
+        if intrinsic:
+            result["intrinsic_value"] = intrinsic
 
     return result
 

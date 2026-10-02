@@ -91,7 +91,12 @@ def get_fundamentals(code: str = Query(..., description="Stock ticker, e.g. AAPL
             "market_cap": info.get("total_mv"),
         }
         fundamentals = partial if any(v is not None for v in partial.values()) else {}
-    return FundamentalsResponse(code=code.upper(), name=info.get("name"), fundamentals=fundamentals or {})
+    return FundamentalsResponse(
+        code=code.upper(),
+        name=info.get("name"),
+        fundamentals=fundamentals or {},
+        intrinsic_value=info.get("intrinsic_value"),
+    )
 
 
 _SUPPORTED_FREE_TEXT_RE = re.compile(r"^[A-Za-z0-9.*\-+\u3400-\u9fff\s]+$")
