@@ -153,6 +153,30 @@ export interface FundamentalsResponse {
   intrinsicValue?: IntrinsicValue | null;
 }
 
+export interface PivotLevels {
+  pivot: number;
+  r1: number;
+  r2: number;
+  r3: number;
+  s1: number;
+  s2: number;
+  s3: number;
+  currentPrice: number;
+  /** Highest level below the price. */
+  nearestSupport?: number | null;
+  /** Lowest level above the price. */
+  nearestResistance?: number | null;
+  /** The session the pivots are based on (YYYY-MM-DD), when known. */
+  basisDate?: string | null;
+  period: string;
+}
+
+export interface SupportResistanceResponse {
+  code: string;
+  name?: string;
+  levels?: PivotLevels | null;
+}
+
 // ============ Analysis Result Types ============
 
 /** Sync analysis response */

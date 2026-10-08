@@ -7,6 +7,7 @@ import type {
   AnalyzeAsyncResponse,
   AnalysisReport,
   FundamentalsResponse,
+  SupportResistanceResponse,
   TaskStatus,
   TaskListResponse,
 } from '../types/analysis';
@@ -20,6 +21,14 @@ export const analysisApi = {
   getFundamentals: async (code: string): Promise<FundamentalsResponse> => {
     const response = await apiClient.get('/api/v1/analysis/fundamentals', { params: { code } });
     return toCamelCase<FundamentalsResponse>(response.data);
+  },
+
+  /**
+   * Fetch pivot-point support/resistance levels for a stock.
+   */
+  getSupportResistance: async (code: string): Promise<SupportResistanceResponse> => {
+    const response = await apiClient.get('/api/v1/analysis/support-resistance', { params: { code } });
+    return toCamelCase<SupportResistanceResponse>(response.data);
   },
 
   /**

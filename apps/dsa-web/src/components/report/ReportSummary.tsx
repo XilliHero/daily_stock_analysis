@@ -2,6 +2,7 @@ import React from 'react';
 import type { AnalysisResult, AnalysisReport } from '../../types/analysis';
 import { ReportOverview } from './ReportOverview';
 import { ReportFundamentals } from './ReportFundamentals';
+import { ReportSupportResistance } from './ReportSupportResistance';
 import { ReportStrategy } from './ReportStrategy';
 import { ReportNews } from './ReportNews';
 import { ReportDetails } from './ReportDetails';
@@ -45,6 +46,9 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
 
       {/* Strategy levels */}
       <ReportStrategy strategy={strategy} language={reportLanguage} />
+
+      {/* Support & resistance (pivot points) */}
+      <ReportSupportResistance stockCode={meta.stockCode} />
 
       {/* Fundamental ratios */}
       <ReportFundamentals stockCode={meta.stockCode} />

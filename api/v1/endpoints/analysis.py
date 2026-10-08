@@ -31,6 +31,7 @@ from api.v1.schemas.analysis import (
     AnalyzeRequest,
     AnalysisResultResponse,
     FundamentalsResponse,
+    SupportResistanceResponse,
     TaskAccepted,
     BatchTaskAcceptedResponse,
     BatchTaskAcceptedItem,
@@ -97,6 +98,35 @@ def get_fundamentals(code: str = Query(..., description="Stock ticker, e.g. AAPL
         fundamentals=fundamentals or {},
         intrinsic_value=info.get("intrinsic_value"),
     )
+
+
+@router.get(
+    "/support-resistance",
+    response_model=SupportResistanceResponse,
+    summary="Pivot-point support/resistance for a stock",
+)
+def get_support_resistance_levels(
+    code: str = Query(..., description="Stock ticker, e.g. AAPL, CNQ.TO, 600519"),
+) -> SupportResistanceResponse:
+    """Classic pivot-point support/resistance levels from recent price history.
+
+    Works for every market (pure price arithmetic). Degrades to null levels
+    rather than erroring when no price history is available.
+    """
+    from src.agent.tools.analysis_tools import get_support_resistance
+
+    name: Optional[str] = None
+    try:
+        levels = get_support_resistance(code)
+    except Exception as exc:
+        logger.warning(f"support/resistance lookup failed for {code}: {exc}")
+        levels = None
+    try:
+        from src.agent.tools.data_tools import _get_fetcher_manager
+        name = _get_fetcher_manager().get_stock_name(code) or None
+    except Exception:
+        name = None
+    return SupportResistanceResponse(code=code.upper(), name=name, levels=levels)
 
 
 _SUPPORTED_FREE_TEXT_RE = re.compile(r"^[A-Za-z0-9.*\-+\u3400-\u9fff\s]+$")

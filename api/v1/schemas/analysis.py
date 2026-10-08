@@ -99,6 +99,17 @@ class FundamentalsResponse(BaseModel):
     )
 
 
+class SupportResistanceResponse(BaseModel):
+    """Pivot-point support/resistance levels for a single stock (all markets)."""
+
+    code: str = Field(..., description="Stock ticker")
+    name: Optional[str] = Field(None, description="Company name")
+    levels: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Pivot point levels (pivot, r1-r3, s1-s3, nearest support/resistance); null when no price history",
+    )
+
+
 class AnalysisResultResponse(BaseModel):
     """分析结果响应模型"""
 

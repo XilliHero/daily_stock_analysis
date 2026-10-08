@@ -2,7 +2,7 @@ interface Ratio {
   name: string;
   what: string;
   read: string;
-  target: string;
+  target?: string;
 }
 
 interface RatioGroup {
@@ -139,16 +139,43 @@ const GROUPS: RatioGroup[] = [
       },
     ],
   },
+  {
+    heading: 'Support & Resistance',
+    blurb:
+      'Price levels where a stock has tended to stop falling (support) or stop rising (resistance). The app uses classic pivot points — a standard, formula-based way to project them from recent price action.',
+    ratios: [
+      {
+        name: 'Pivot (P)',
+        what: 'The central reference level, the average of the last session’s high, low and close: P = (High + Low + Close) / 3.',
+        read: 'Trading above the pivot is a mildly bullish bias for the session; below it, mildly bearish. The other levels are measured out from here.',
+      },
+      {
+        name: 'Resistance — R1, R2, R3',
+        what: 'Projected ceilings above the current price, derived from the pivot and the recent range (R1 is nearest, R3 furthest).',
+        read: 'Prices often pause or pull back at these levels. A decisive break above one tends to put the next level in play as the new target.',
+      },
+      {
+        name: 'Support — S1, S2, S3',
+        what: 'Projected floors below the current price (S1 nearest, S3 furthest).',
+        read: 'Prices often find a footing at these levels. They’re common spots to consider stop-losses just beneath, or to watch for a bounce. A clean break below one opens the way to the next.',
+      },
+      {
+        name: 'Nearest support / resistance',
+        what: 'The closest level below the price (support) and the closest above it (resistance) — the two levels that matter most right now.',
+        read: 'The gap up to resistance versus down to support gives a quick read on the near-term risk/reward. Pivots are short-term and recompute each session, so treat them as a guide, not a guarantee — and confirm with trend and volume.',
+      },
+    ],
+  },
 ];
 
 export default function RatiosGuidePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <header>
-        <h1 className="text-2xl font-semibold">Fundamental Ratios — Explained</h1>
+        <h1 className="text-2xl font-semibold">Metrics — Explained</h1>
         <p className="mt-1 text-secondary-text">
-          A plain-English guide to the ratios shown in the Fundamentals section of a stock analysis
-          (Home &rarr; Analyze, and Ask), each with a desirable target to aim for.
+          A plain-English guide to the metrics shown in a stock analysis (Home &rarr; Analyze, and Ask):
+          the fundamental ratios, the intrinsic-value estimate, and the support &amp; resistance levels.
         </p>
         <p className="mt-2 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] p-3 text-sm text-secondary-text">
           <span className="label-uppercase mr-1 text-xs">Important:</span>
@@ -173,10 +200,12 @@ export default function RatiosGuidePage() {
                   <span className="label-uppercase mr-1 text-xs">How to read it:</span>
                   {r.read}
                 </p>
-                <p className="mt-2 text-sm font-medium text-[hsl(var(--primary))]">
-                  <span className="label-uppercase mr-1 text-xs">Desirable:</span>
-                  {r.target}
-                </p>
+                {r.target && (
+                  <p className="mt-2 text-sm font-medium text-[hsl(var(--primary))]">
+                    <span className="label-uppercase mr-1 text-xs">Desirable:</span>
+                    {r.target}
+                  </p>
+                )}
               </div>
             ))}
           </div>

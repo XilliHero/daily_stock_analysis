@@ -10,6 +10,7 @@ import logging
 from typing import Optional
 
 from src.agent.tools.registry import ToolParameter, ToolDefinition
+from src.agent.tools.support_resistance import pivot_levels_from_history
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,7 @@ def _handle_analyze_trend(stock_code: str) -> dict:
         "support_ma10": result.support_ma10,
         "resistance_levels": result.resistance_levels,
         "support_levels": result.support_levels,
+        "pivot_levels": pivot_levels_from_history(df),
         "macd_dif": round(result.macd_dif, 4),
         "macd_dea": round(result.macd_dea, 4),
         "macd_bar": round(result.macd_bar, 4),
@@ -116,6 +118,20 @@ def _handle_analyze_trend(stock_code: str) -> dict:
         "signal_reasons": result.signal_reasons,
         "risk_factors": result.risk_factors,
     }
+
+
+def get_support_resistance(stock_code: str) -> Optional[dict]:
+    """Pivot-point support/resistance for a stock, from its price history.
+
+    Works for any market (pure price arithmetic). Returns the level dict from
+    ``pivot_levels_from_history`` or ``None`` when history is unavailable.
+    """
+    if not (stock_code and str(stock_code).strip()):
+        return None
+    df = _fetch_trend_data(stock_code)
+    if df is None or getattr(df, "empty", True):
+        return None
+    return pivot_levels_from_history(df)
 
 
 analyze_trend_tool = ToolDefinition(

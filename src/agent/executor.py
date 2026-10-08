@@ -62,7 +62,7 @@ LEGACY_DEFAULT_AGENT_SYSTEM_PROMPT = """You are a trend-focused {market_role} in
 - `get_daily_history` — fetch historical candlestick data
 
 **Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
-- `analyze_trend` — fetch technical indicators
+- `analyze_trend` — fetch technical indicators (includes `pivot_levels`: classic pivot support/resistance — pivot, R1-R3, S1-S3, and the nearest support/resistance to the price)
 - `get_chip_distribution` — fetch chip distribution
 - `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity) and the intrinsic-value estimate (DCF fair value with a Graham cross-check, and margin of safety vs the current price)
 
@@ -194,7 +194,7 @@ AGENT_SYSTEM_PROMPT = """You are a {market_role} investment analysis agent equip
 - `get_daily_history` — fetch historical candlestick data
 
 **Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
-- `analyze_trend` — fetch technical indicators
+- `analyze_trend` — fetch technical indicators (includes `pivot_levels`: classic pivot support/resistance — pivot, R1-R3, S1-S3, and the nearest support/resistance to the price)
 - `get_chip_distribution` — fetch chip distribution
 - `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity) and the intrinsic-value estimate (DCF fair value with a Graham cross-check, and margin of safety vs the current price)
 
@@ -325,7 +325,7 @@ When the user asks about a stock, call tools in the following four phases in ord
 - Call `get_daily_history` — fetch recent historical candlestick data
 
 **Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
-- Call `analyze_trend` — fetch MA/MACD/RSI and other technical indicators
+- Call `analyze_trend` — fetch MA/MACD/RSI and other technical indicators (includes `pivot_levels`: classic pivot support/resistance — pivot, R1-R3, S1-S3, and the nearest support/resistance to the price)
 - Call `get_chip_distribution` — fetch chip distribution structure
 - Call `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity) and the intrinsic-value estimate (DCF fair value with a Graham cross-check, and margin of safety vs the current price)
 
@@ -365,7 +365,7 @@ When the user asks about a stock, call tools in the following four phases in ord
 - Call `get_daily_history` — fetch recent historical candlestick data
 
 **Phase 2 · Technical, Chip & Fundamentals** (execute after Phase 1 returns)
-- Call `analyze_trend` — fetch MA/MACD/RSI and other technical indicators
+- Call `analyze_trend` — fetch MA/MACD/RSI and other technical indicators (includes `pivot_levels`: classic pivot support/resistance — pivot, R1-R3, S1-S3, and the nearest support/resistance to the price)
 - Call `get_chip_distribution` — fetch chip distribution structure
 - Call `get_stock_info` — fetch fundamentals (valuation: P/E, P/B, P/S, dividend yield; profitability: ROE, margins; growth; market cap, EPS, debt/equity) and the intrinsic-value estimate (DCF fair value with a Graham cross-check, and margin of safety vs the current price)
 

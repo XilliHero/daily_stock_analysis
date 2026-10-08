@@ -34,6 +34,7 @@ vi.mock('../../api/analysis', async () => {
     analysisApi: {
       analyzeAsync: vi.fn(),
       getFundamentals: vi.fn().mockResolvedValue({ code: '', name: '', fundamentals: {} }),
+      getSupportResistance: vi.fn().mockResolvedValue({ code: '', name: '', levels: null }),
     },
   };
 });
