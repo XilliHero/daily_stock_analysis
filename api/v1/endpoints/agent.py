@@ -370,6 +370,40 @@ async def agent_research(request: ResearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Tools that take a single stock_code, most-specific first — used to recover the
+# ticker a chat answer is about so the UI can attach its metric cards.
+_STOCK_CODE_TOOL_PRIORITY = (
+    "get_stock_info",
+    "analyze_trend",
+    "get_realtime_quote",
+    "get_daily_history",
+    "get_chip_distribution",
+)
+
+
+def _resolved_stock_code(tool_calls_log, context=None) -> Optional[str]:
+    """Best-effort resolved ticker from a chat run, for attaching metric cards.
+
+    Prefers the code passed to the primary data tools (already canonicalized by
+    the tool layer); falls back to any tool's stock_code, then the follow-up
+    context. Returns None when the chat wasn't about a single stock.
+    """
+    by_tool: dict = {}
+    for entry in tool_calls_log or []:
+        args = entry.get("arguments") or {}
+        code = args.get("stock_code")
+        tool = entry.get("tool")
+        if code and tool and tool not in by_tool:
+            by_tool[tool] = str(code)
+    for tool in _STOCK_CODE_TOOL_PRIORITY:
+        if tool in by_tool:
+            return by_tool[tool]
+    if by_tool:
+        return next(iter(by_tool.values()))
+    ctx_code = (context or {}).get("stock_code")
+    return str(ctx_code) if ctx_code else None
+
+
 @router.post("/chat/stream")
 async def agent_chat_stream(request: ChatRequest):
     """
@@ -421,6 +455,7 @@ async def agent_chat_stream(request: ChatRequest):
                     "error": result.error,
                     "total_steps": result.total_steps,
                     "session_id": session_id,
+                    "stock_code": _resolved_stock_code(result.tool_calls_log, stream_ctx),
                 }),
                 loop,
             )

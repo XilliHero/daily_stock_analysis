@@ -30,6 +30,8 @@ export interface Message {
   skill?: string;
   skillName?: string;
   thinkingSteps?: ProgressStep[];
+  /** Ticker the answer is about, when the backend resolved one (for metric cards). */
+  stockCode?: string;
 }
 
 export interface StreamMeta {
@@ -215,6 +217,7 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
       const decoder = new TextDecoder();
       let buf = '';
       let finalContent: string | null = null;
+      let finalStockCode: string | null = null;
       const currentProgressSteps: ProgressStep[] = [];
       const processLine = (line: string) => {
         if (!line.startsWith('data: ')) return;
@@ -226,6 +229,7 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
             success: boolean;
             content?: string;
             error?: string;
+            stock_code?: string | null;
           };
           if (doneEvent.success === false) {
             const parsedStreamError = getParsedApiError(
@@ -242,6 +246,7 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
             });
           }
           finalContent = doneEvent.content ?? '';
+          finalStockCode = doneEvent.stock_code ?? null;
           return;
         }
 
@@ -296,6 +301,7 @@ export const useAgentChatStore = create<AgentChatState & AgentChatActions>((set,
               skill: payload.skills?.[0],
               skillName,
               thinkingSteps: [...currentProgressSteps],
+              stockCode: finalStockCode ?? undefined,
             },
           ],
         }));

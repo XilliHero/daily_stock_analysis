@@ -8,6 +8,7 @@ import { ApiErrorAlert, Badge, Button, ConfirmDialog, EmptyState, InlineAlert, S
 import { getParsedApiError } from '../api/error';
 import type { SkillInfo } from '../api/agent';
 import { DashboardStateBlock } from '../components/dashboard';
+import { ReportFundamentals, ReportSupportResistance } from '../components/report';
 import {
   useAgentChatStore,
   type Message,
@@ -763,8 +764,8 @@ const ChatPage: React.FC = () => {
               </div>
             ) : (
               messages.map((msg) => (
+                <React.Fragment key={msg.id}>
                 <div
-                  key={msg.id}
                   className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
                   <div
@@ -846,6 +847,16 @@ const ChatPage: React.FC = () => {
                     )}
                   </div>
                 </div>
+                {msg.role === 'assistant' && msg.stockCode && (
+                  <div className="ml-12 max-w-[min(100%,48rem)] space-y-4">
+                    <p className="label-uppercase text-xs text-muted-text">
+                      Live metrics · {msg.stockCode}
+                    </p>
+                    <ReportSupportResistance stockCode={msg.stockCode} />
+                    <ReportFundamentals stockCode={msg.stockCode} />
+                  </div>
+                )}
+                </React.Fragment>
               ))
             )}
 
