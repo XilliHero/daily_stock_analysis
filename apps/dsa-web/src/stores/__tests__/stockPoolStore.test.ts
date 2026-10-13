@@ -151,16 +151,28 @@ describe('stockPoolStore', () => {
 
   it('surfaces duplicate task errors without replacing the dashboard error state', async () => {
     vi.mocked(analysisApi.analyzeAsync).mockRejectedValue(
-      new DuplicateTaskError('600519', 'task-1', '股票 600519 正在分析中'),
+      new DuplicateTaskError('AAPL', 'task-1', 'AAPL is already being analyzed'),
     );
 
-    useStockPoolStore.getState().setQuery('600519');
+    useStockPoolStore.getState().setQuery('AAPL');
     await useStockPoolStore.getState().submitAnalysis();
 
     const state = useStockPoolStore.getState();
-    expect(state.duplicateError).toContain('600519');
+    expect(state.duplicateError).toContain('AAPL');
     expect(state.error).toBeNull();
     expect(state.isAnalyzing).toBe(false);
+  });
+
+  it('rejects Chinese A-share / Hong Kong tickers before calling the API', async () => {
+    for (const code of ['600519', '00700.HK', 'HK00700', '000001']) {
+      useStockPoolStore.setState({ inputError: undefined });
+      useStockPoolStore.getState().setQuery(code);
+      await useStockPoolStore.getState().submitAnalysis();
+
+      const state = useStockPoolStore.getState();
+      expect(state.inputError).toContain('US and Canada');
+      expect(analysisApi.analyzeAsync).not.toHaveBeenCalled();
+    }
   });
 
   it('rejects obviously invalid mixed alphanumeric input before calling the API', async () => {
@@ -174,18 +186,18 @@ describe('stockPoolStore', () => {
     expect(analysisApi.analyzeAsync).not.toHaveBeenCalled();
   });
 
-  it('accepts HK suffix codes from autocomplete without local validation errors', async () => {
+  it('accepts Canada (.TO) suffix codes from autocomplete without local validation errors', async () => {
     vi.mocked(analysisApi.analyzeAsync).mockResolvedValue({
-      taskId: 'task-hk-1',
-      stockCode: '00700.HK',
+      taskId: 'task-ca-1',
+      stockCode: 'CNQ.TO',
       status: 'pending',
       message: 'accepted',
     } as never);
 
     await useStockPoolStore.getState().submitAnalysis({
-      stockCode: '00700.HK',
-      stockName: '腾讯控股',
-      originalQuery: '00700',
+      stockCode: 'CNQ.TO',
+      stockName: 'Canadian Natural Resources',
+      originalQuery: 'CNQ',
       selectionSource: 'autocomplete',
     });
 
@@ -193,10 +205,10 @@ describe('stockPoolStore', () => {
     expect(state.inputError).toBeUndefined();
     expect(state.isAnalyzing).toBe(false);
     expect(analysisApi.analyzeAsync).toHaveBeenCalledWith({
-      stockCode: '00700.HK',
+      stockCode: 'CNQ.TO',
       reportType: 'detailed',
-      stockName: '腾讯控股',
-      originalQuery: '00700',
+      stockName: 'Canadian Natural Resources',
+      originalQuery: 'CNQ',
       selectionSource: 'autocomplete',
       notify: true,
     });

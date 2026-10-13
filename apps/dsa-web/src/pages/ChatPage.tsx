@@ -26,14 +26,14 @@ import {
 import { isNearBottom } from '../utils/chatScroll';
 import { getReportText } from '../utils/reportLanguage';
 
-// Quick question examples shown on empty state
+// Quick question examples shown on empty state (US/Canada tickers)
 const QUICK_QUESTIONS = [
-  { label: 'Analyze Moutai with Chanlun', skill: 'chan_theory' },
-  { label: 'Elliott Wave on CATL', skill: 'wave_theory' },
-  { label: 'Analyze BYD\'s trend', skill: 'bull_trend' },
-  { label: 'Range-trading skill on SMIC', skill: 'box_oscillation' },
-  { label: 'Analyze Tencent hk00700', skill: 'bull_trend' },
-  { label: 'Analyze East Money by sentiment cycle', skill: 'emotion_cycle' },
+  { label: 'Analyze Apple (AAPL) trend', skill: 'bull_trend' },
+  { label: 'Elliott Wave on NVDA', skill: 'wave_theory' },
+  { label: 'Is Tesla a buy right now?', skill: 'bull_trend' },
+  { label: 'Range-trading skill on AMD', skill: 'box_oscillation' },
+  { label: 'Analyze Shopify (SHOP.TO)', skill: 'bull_trend' },
+  { label: 'Analyze Microsoft by sentiment cycle', skill: 'emotion_cycle' },
 ];
 
 const ChatPage: React.FC = () => {
@@ -730,7 +730,7 @@ const ChatPage: React.FC = () => {
               <div className="flex h-full items-center justify-center">
                 <EmptyState
                   title="Start asking"
-                  description="Type 'Analyze 600519' or 'Is Moutai a buy now', and the AI will call live-data tools to generate a decision report for you."
+                  description="Type 'Analyze AAPL' or 'Is Tesla a buy now', and the AI will call live-data tools to generate a decision report for you."
                   className="max-w-2xl border-dashed bg-card/55"
                   icon={(
                     <svg
@@ -979,7 +979,7 @@ const ChatPage: React.FC = () => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="e.g. Analyze 600519 / Is Moutai a buy right now? (Enter to send, Shift+Enter for newline)"
+                  placeholder="e.g. Analyze AAPL / Is Tesla a buy right now? (Enter to send, Shift+Enter for newline)"
                   disabled={loading}
                   rows={1}
                   className="input-surface input-focus-glow flex-1 min-h-[44px] max-h-[200px] rounded-xl border bg-transparent px-4 py-2.5 text-sm transition-all focus:outline-none resize-none disabled:cursor-not-allowed disabled:opacity-60"

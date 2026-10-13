@@ -103,7 +103,7 @@ describe('HomePage', () => {
     expect(dashboard.className).toContain('lg:h-[calc(100vh-2rem)]');
     expect(dashboard.firstElementChild?.className).toContain('min-h-0');
     expect(dashboard.querySelector('.flex-1.flex.min-h-0.overflow-hidden')).toBeTruthy();
-    expect(screen.getByPlaceholderText('Enter a stock code or name, e.g. 600519, Kweichow Moutai, AAPL')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Enter a stock code or name, e.g. AAPL, Tesla, CNQ.TO')).toBeInTheDocument();
     expect(await screen.findByText('趋势维持强势')).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
@@ -140,7 +140,7 @@ describe('HomePage', () => {
       items: [],
     });
     vi.mocked(analysisApi.analyzeAsync).mockRejectedValue(
-      new DuplicateTaskError('600519', 'task-1', '股票 600519 正在分析中'),
+      new DuplicateTaskError('AAPL', 'task-1', 'AAPL is already being analyzed'),
     );
 
     render(
@@ -149,14 +149,14 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    const input = await screen.findByPlaceholderText('Enter a stock code or name, e.g. 600519, Kweichow Moutai, AAPL');
-    fireEvent.change(input, { target: { value: '600519' } });
+    const input = await screen.findByPlaceholderText('Enter a stock code or name, e.g. AAPL, Tesla, CNQ.TO');
+    fireEvent.change(input, { target: { value: 'AAPL' } });
     fireEvent.click(screen.getByRole('button', { name: 'Analyze' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/600519 is being analyzed/)).toBeInTheDocument();
+      expect(screen.getByText(/AAPL is being analyzed/)).toBeInTheDocument();
     });
-    expect(screen.getByText(/600519 is being analyzed/).closest('[role="alert"]')).toBeInTheDocument();
+    expect(screen.getByText(/AAPL is being analyzed/).closest('[role="alert"]')).toBeInTheDocument();
   });
 
   it('navigates to chat with report context when asking a follow-up question', async () => {

@@ -349,12 +349,12 @@ describe('ChatPage', () => {
     vi.mocked(historyApi.getDetail).mockImplementation(() => deferred.promise);
 
     render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0&recordId=1']}>
+      <MemoryRouter initialEntries={['/chat?stock=AAPL&name=Apple&recordId=1']}>
         <ChatPage />
       </MemoryRouter>
     );
 
-    expect(await screen.findByDisplayValue('Please analyze 贵州茅台(600519) in depth')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Please analyze Apple(AAPL) in depth')).toBeInTheDocument();
 
     const sendButton = screen.getByRole('button', { name: /Send|处理中\.\.\./ });
     expect(sendButton).not.toBeDisabled();
@@ -365,10 +365,10 @@ describe('ChatPage', () => {
     await waitFor(() => {
       expect(mockStartStream).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'Please analyze 贵州茅台(600519) in depth',
+          message: 'Please analyze Apple(AAPL) in depth',
           context: {
-            stock_code: '600519',
-            stock_name: '贵州茅台',
+            stock_code: 'AAPL',
+            stock_name: 'Apple',
           },
         }),
         expect.objectContaining({
@@ -403,15 +403,15 @@ describe('ChatPage', () => {
       expect(screen.queryByText('Loading prior analysis context; you can send a follow-up now.')).not.toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByPlaceholderText(/Analyze 600519/), {
-      target: { value: '继续分析成交量' },
+    fireEvent.change(screen.getByPlaceholderText(/Analyze AAPL/), {
+      target: { value: 'Analyze the volume trend' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() => {
       expect(mockStartStream).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          message: '继续分析成交量',
+          message: 'Analyze the volume trend',
           context: undefined,
         }),
         expect.objectContaining({
@@ -445,12 +445,12 @@ describe('ChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0&recordId=1']}>
+      <MemoryRouter initialEntries={['/chat?stock=AAPL&name=Apple&recordId=1']}>
         <ChatPage />
       </MemoryRouter>
     );
 
-    expect(await screen.findByDisplayValue('Please analyze 贵州茅台(600519) in depth')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Please analyze Apple(AAPL) in depth')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.queryByText('Loading prior analysis context; you can send a follow-up now.')).not.toBeInTheDocument();
@@ -461,10 +461,10 @@ describe('ChatPage', () => {
     await waitFor(() => {
       expect(mockStartStream).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'Please analyze 贵州茅台(600519) in depth',
+          message: 'Please analyze Apple(AAPL) in depth',
           context: expect.objectContaining({
-            stock_code: '600519',
-            stock_name: '贵州茅台',
+            stock_code: 'AAPL',
+            stock_name: 'Apple',
             previous_price: 1523.6,
             previous_change_pct: 1.8,
             previous_strategy: expect.objectContaining({
@@ -515,7 +515,7 @@ describe('ChatPage', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Ask' })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Analyze 600519/)).toHaveValue('');
+    expect(screen.getByPlaceholderText(/Analyze AAPL/)).toHaveValue('');
     expect(historyApi.getDetail).not.toHaveBeenCalled();
   });
 
@@ -530,13 +530,13 @@ describe('ChatPage', () => {
     const router = createMemoryRouter(
       [{ path: '/chat', element: <ChatPage /> }],
       {
-        initialEntries: ['/chat?stock=600519&name=%E8%B4%B5%E5%B7%9E%E8%8C%85%E5%8F%B0&recordId=1'],
+        initialEntries: ['/chat?stock=MSFT&name=Microsoft&recordId=1'],
       },
     );
 
     render(<RouterProvider router={router} />);
 
-    expect(await screen.findByDisplayValue('Please analyze 贵州茅台(600519) in depth')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Please analyze Microsoft(MSFT) in depth')).toBeInTheDocument();
     expect(screen.getByText('Loading prior analysis context; you can send a follow-up now.')).toBeInTheDocument();
 
     await router.navigate('/chat?stock=AAPL&name=Apple&recordId=2');

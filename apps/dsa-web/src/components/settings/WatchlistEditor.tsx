@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { getParsedApiError } from '../../api/error';
 import { systemConfigApi, SystemConfigConflictError } from '../../api/systemConfig';
 import { watchlistApi } from '../../api/watchlist';
+import { isUnsupportedMarketCode, UNSUPPORTED_MARKET_MESSAGE } from '../../utils/validation';
 import { Button, InlineAlert, Input } from '../common';
 
 interface WatchlistEditorProps {
@@ -65,6 +66,10 @@ export function WatchlistEditor({
     setError(null);
     setInfo(null);
     if (!sym) return;
+    if (isUnsupportedMarketCode(sym)) {
+      setError(UNSUPPORTED_MARKET_MESSAGE);
+      return;
+    }
     if (tickers.includes(sym)) {
       setError(`${sym} is already in your watchlist.`);
       return;

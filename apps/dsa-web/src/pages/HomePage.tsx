@@ -165,7 +165,7 @@ const HomePage: React.FC = () => {
                 onSubmit={(stockCode, stockName, selectionSource) => {
                   handleSubmitAnalysis(stockCode, stockName, selectionSource);
                 }}
-                placeholder="Enter a stock code or name, e.g. 600519, Kweichow Moutai, AAPL"
+                placeholder="Enter a stock code or name, e.g. AAPL, Tesla, CNQ.TO"
                 disabled={isAnalyzing}
                 className={inputError ? 'border-danger/50' : undefined}
               />

@@ -5,7 +5,13 @@ import { getParsedApiError } from '../api/error';
 import { historyApi } from '../api/history';
 import type { AnalysisReport, HistoryItem, HistoryListResponse, TaskInfo } from '../types/analysis';
 import { getRecentStartDate, getTodayInShanghai } from '../utils/format';
-import { isObviouslyInvalidStockQuery, looksLikeStockCode, validateStockCode } from '../utils/validation';
+import {
+  isObviouslyInvalidStockQuery,
+  isUnsupportedMarketCode,
+  looksLikeStockCode,
+  validateStockCode,
+  UNSUPPORTED_MARKET_MESSAGE,
+} from '../utils/validation';
 
 const PAGE_SIZE = 20;
 
@@ -311,6 +317,12 @@ export const useStockPoolStore = create<StockPoolState>((set, get) => ({
 
     if (!stockCodeInput) {
       set({ inputError: 'Enter a stock code', duplicateError: null });
+      return;
+    }
+
+    // US/Canada only — reject A-share / Hong Kong tickers up front.
+    if (isUnsupportedMarketCode(stockCodeInput)) {
+      set({ inputError: UNSUPPORTED_MARKET_MESSAGE, duplicateError: null });
       return;
     }
 
